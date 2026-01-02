@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import RedirectResponse
 import os
 import urllib.parse
@@ -24,4 +24,21 @@ def instagram_login():
     }
     auth_url = "https://api.instagram.com/oauth/authorize?" + urllib.parse.urlencode(auth_params)
     return RedirectResponse(auth_url)
+
+@router.get("/callback")
+def instagram_callback(code: str = Query(...)):
+    token_url = "https://api.instagram.com/oauth/access_token"
+    data = {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "redirect_uri": REDIRECT_URI,
+        "grant_type": "authorization_code",
+        "code": code
+    }
+    response = requests.post(token_url, data=data)
+    if response.status_code != 200:
+        return {"error": response.json()}
+    tokens = response.json()
+    return tokens
+
 
