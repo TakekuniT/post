@@ -26,6 +26,8 @@ def youtube_login():
         "access_type": "offline",
         "prompt": "consent"
     }
+    print(auth_params)
+    auth_params["scope"] = "%20".join(SCOPES)
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(auth_params)
     return RedirectResponse(auth_url)
 
