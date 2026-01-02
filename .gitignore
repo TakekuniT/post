@@ -1,0 +1,48 @@
+# ===========================
+# Python / FastAPI backend
+# ===========================
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+packages/backend/venv/
+packages/backend/env/
+packages/backend/.venv/
+
+# Python packaging / distribution
+packages/backend/*.egg-info/
+packages/backend/dist/
+packages/backend/build/
+
+# Logs
+*.log
+
+# Environment variables
+packages/backend/.env
+
+# ===========================
+# iOS / Xcode
+# ===========================
+# Xcode
+apps/ios/DerivedData/
+apps/ios/build/
+apps/ios/*.xcworkspace
+apps/ios/*.xcuserdata
+apps/ios/Pods/
+
+# Swift Package Manager
+apps/ios/.build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ===========================
+# Shared / misc
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
