@@ -8,7 +8,7 @@ from services.instagram import InstagramService
 TEST_USER_ID = "ff95c9b9-c4ae-408c-a290-b04878d0d66a"
 
 # Path to a real 10-15 second mp4 file on your Mac for testing
-TEST_VIDEO_PATH = "/Users/ttanemori/myFiles/XPost/short_test.mp4"
+TEST_VIDEO_PATH = "/Users/ttanemori/myFiles/XPost/short_test3.MOV"
 
 async def test_tiktok():
     print("\n--- Testing TikTok Service ---")
@@ -40,8 +40,8 @@ async def test_instagram():
 
 async def run_tests():
     # You can comment out the ones you aren't testing yet
-    # await test_tiktok()
-    # await test_youtube()
+    await test_tiktok()
+    await test_youtube()
     await test_instagram()
 
 if __name__ == "__main__":
