@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 from fastapi import FastAPI, APIRouter
-from routes import instagram, youtube
+from routes import instagram, youtube, tiktok
 
 app = FastAPI()
 
@@ -33,6 +33,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(instagram.router, prefix="/instagram")
 app.include_router(youtube.router, prefix="/youtube")
+app.include_router(tiktok.router, prefix="/tiktok")
 
 
 @app.get("/")

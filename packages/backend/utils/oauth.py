@@ -2,6 +2,9 @@ import os
 import requests
 from datetime import datetime, timedelta
 from typing import Optional
+import hashlib
+import base64
+import secrets
 
 class OAuthManager:
     def __init__(self):
@@ -14,6 +17,41 @@ class OAuthManager:
         self.ig_client_id = os.getenv("INSTAGRAM_CLIENT_ID")
         self.ig_client_secret = os.getenv("INSTAGRAM_CLIENT_SECRET")
         self.ig_redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
+
+
+    # --- TIKTOK / TIKTOK LOGIC ---
+    def generate_pkce_pair(self):
+        """Generates a code_verifier and code_challenge for PKCE."""
+        # 1. Create a high-entropy random string (verifier)
+        verifier = secrets.token_urlsafe(64)
+        
+        # 2. Hash it with SHA-256
+        sha256_hash = hashlib.sha256(verifier.encode('utf-8')).digest()
+        
+        # 3. Base64url encode the hash (challenge)
+        challenge = base64.urlsafe_b64encode(sha256_hash).decode('utf-8').replace('=', '')
+        
+        return verifier, challenge
+    
+    def exchange_tiktok_code(self, code: str, verifier: str):
+        """Exchanges the auth code and verifier for actual tokens."""
+        url = "https://open.tiktokapis.com/v2/oauth/token/"
+        
+        # TikTok requires this specific content type
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        
+        data = {
+            "client_key": os.getenv("TIKTOK_CLIENT_ID"),
+            "client_secret": os.getenv("TIKTOK_CLIENT_SECRET"),
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": os.getenv("TIKTOK_REDIRECT_URI"),
+            "code_verifier": verifier  # This is why we needed the state/cookie!
+        }
+        
+        response = requests.post(url, data=data, headers=headers)
+        return response.json()
+    
 
     # --- YOUTUBE / GOOGLE LOGIC ---
 
