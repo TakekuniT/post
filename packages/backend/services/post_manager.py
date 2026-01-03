@@ -1,8 +1,8 @@
 import asyncio
-from services.youtube_service import YouTubeService
-from services.tiktok_service import TikTokService
-from services.instagram_service import InstagramService
-from services.facebook_service import FacebookService
+from services.youtube import YouTubeService
+from services.tiktok import TikTokService
+from services.instagram import InstagramService
+from services.facebook import FacebookService
 
 class PostManager:
     @staticmethod
