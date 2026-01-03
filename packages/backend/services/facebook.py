@@ -39,9 +39,9 @@ class FacebookService:
                 "access_token": res["access_token"],
                 "expires_at": new_expiry.isoformat()
             })
-            return res["access_token"], account["page_id"]
+            return res["access_token"], account["platform_user_id"]
 
-        return account["access_token"], account["page_id"]
+        return account["access_token"], account["platform_user_id"]
 
     @staticmethod
     async def upload_video(user_id: str, file_path: str, caption: str):
@@ -100,7 +100,7 @@ class FacebookService:
             if not publish_res.get("success"):
                 raise Exception(f"FB Finalize Failed: {publish_res}")
 
-            print(f"🎉 [FB Upload] Success! Reel is live. ID: {video_id}")
+            print(f"[FB Upload] Success! Reel is live. ID: {video_id}")
             return video_id
 
         except Exception as e:
