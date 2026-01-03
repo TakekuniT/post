@@ -42,7 +42,7 @@ class UserManager:
             "user_id": user_id,
             "platform": platform,
             **data
-        }).execute()
+        }, on_conflict="user_id,platform").execute()
     
 
     
