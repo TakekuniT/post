@@ -9,11 +9,13 @@ from fastapi.staticfiles import StaticFiles
 import shutil
 from moviepy import VideoFileClip
 import moviepy.video.fx as fix
+import asyncio  
+
 
 router = APIRouter()
 # BASE_URL = "http://localhost:8000"
 BASE_URL = "https://youlanda-migratory-trevor.ngrok-free.dev"
-
+# BASE_URL = "https://xpost-dev-taki.loca.lt"
 
 
 CLIENT_ID = os.environ.get("INSTAGRAM_CLIENT_ID")
@@ -111,28 +113,36 @@ def instagram_callback(code: str = None):
     }
 
 
-async def process_and_publish_reel(creation_id, instagram_id, access_token, paths):
-    print(f"DEBUG: Background task started for container: {creation_id}")
-    time.sleep(40)
+async def process_and_publish_reel(creation_id, instagram_id, access_token, paths_to_delete):
+    print(f"DEBUG: Background task started for container {creation_id}")
+    
+    # 1. INCREASE INITIAL WAIT
+    # Instagram often takes 45-60 seconds to fully "digest" a video from a tunnel
+    time.sleep(60) 
 
-    for i in range(20):
+    for i in range(30):
         status_url = f"https://graph.facebook.com/v18.0/{creation_id}"
         status_data = requests.get(status_url, params={
             "fields": "status_code,status",
             "access_token": access_token
         }).json()
 
-        print(f"DEBUG Background status (Attempt {i+1}): {status_data}")
+        print(f"DEBUG Background Status (Attempt {i+1}): {status_data}")
 
         if status_data.get("status_code") == "FINISHED":
-            publish_res = requests.post(f"https://graph.facebook.com/v18.0/{instagram_id}/media_publish", data={
-                "creation_id": creation_id,
-                "access_token": access_token    
-            }).json()
-            print(f"DEBUG: PUBLISH SUCCESS: {publish_res.get('id')}")
+            # ... publish logic ...
             break
+            
+        # 2. BE PATIENT WITH ERRORS
+        # If it's the 2207077 error, DON'T STOP. 
+        # Sometimes IG reports this while it's still retrying the download.
+        if status_data.get("status_code") == "ERROR":
+            print("DEBUG: IG reported error. Retrying anyway for 2 more minutes...")
+            if i > 10: # Only truly give up after 10 attempts (approx 3 mins)
+                 print("DEBUG: Final failure.")
+                 break
         
-        time.sleep(15)
+        time.sleep(20) # Longer sleep between polls
 
 @router.post("/upload-reel")
 async def upload_reel(
@@ -169,7 +179,7 @@ async def upload_reel(
         else:
             final_clip = clip
 
-        final_clip.write_videofile(processed_path, codec="libx264", audio_codec="aac")
+        final_clip.write_videofile(processed_path, codec="libx264", audio_codec="aac", ffmpeg_params=["-movflags", "faststart"])
         final_clip.close()
         clip.close()
 
@@ -216,117 +226,108 @@ async def upload_reel(
         return JSONResponse(status_code=500, content={"error": str(e)})
     
 
-# @router.post("/upload-reel")
-# async def upload_reel(
-#     access_token: str = Form(...),
-#     instagram_id: str = Form(...),
-#     caption: str = Form(...),
-#     file: UploadFile = File(...),
-# ):
-#     clear_static_folder("static")
-#     original_path = None
-#     processed_path = None
+
+
+@router.post("/prepare-reel")
+async def prepare_reel(file: UploadFile = File(...)):
+    try:
+        # Clear static folder to avoid confusion
+        if os.path.exists("static"):
+            shutil.rmtree("static")
+        os.mkdir("static")
+
+        file_extension = file.filename.split(".")[-1]
+        unique_id = str(uuid.uuid4())
+        original_path = os.path.join("static", f"{unique_id}_orig.{file_extension}")
+        processed_path = os.path.join("static", f"{unique_id}_final.mp4")
+
+        with open(original_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # MoviePy Processing
+        clip = VideoFileClip(original_path)
+        w, h = clip.size
+        target_ratio = 9/16
+        
+        if abs((w/h) - target_ratio) > 0.01:
+            new_w = h * target_ratio
+            x1 = (w - new_w) / 2
+            x2 = x1 + new_w
+            final_clip = clip.cropped(x1=x1, x2=x2, y1=0, y2=h)
+        else:
+            final_clip = clip
+
+        # FastStart is KEY for Instagram to read the file over ngrok
+        final_clip.write_videofile(
+            processed_path, 
+            codec="libx264", 
+            audio_codec="aac",
+            ffmpeg_params=["-movflags", "faststart"]
+        )
+        final_clip.close()
+        clip.close()
+
+        public_video_url = f"{BASE_URL}/static/{os.path.basename(processed_path)}"
+        print(f"DEBUG: Sending URL to IG: {public_video_url}")
+        return {
+            "status": "ready",
+            "video_url": public_video_url,
+            "instruction": "Verify this URL plays in an Incognito window, then call /publish-reel"
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
     
-#     try:
-#         # 1. Save original
-#         file_extension = file.filename.split(".")[-1]
-#         unique_id = str(uuid.uuid4())
-#         original_path = os.path.join("static", f"{unique_id}_orig.{file_extension}")
 
-#         with open(original_path, "wb") as buffer:
-#             shutil.copyfileobj(file.file, buffer)
 
-#         # 2. Force MoviePy to process it
-#         clip = VideoFileClip(original_path)
-#         w, h = clip.size
-#         print(f"DEBUG: MoviePy sees dimensions: {w}x{h}")
+@router.post("/publish-reel")
+async def publish_reel(
+    video_url: str = Form(...),
+    access_token: str = Form(...),
+    instagram_id: str = Form(...),
+    caption: str = Form(...)
+):
+    # 1. Create Container (Keep using requests for the initial call is fine)
+    container_url = f"https://graph.facebook.com/v18.0/{instagram_id}/media"
+    payload = {
+        "media_type": "REELS",
+        "video_url": video_url,
+        "caption": caption,
+        "share_to_feed": "true",
+        "access_token": access_token
+    }
+
+    res = requests.post(container_url, data=payload).json()
+    creation_id = res.get("id")
+    if not creation_id:
+        return JSONResponse(status_code=400, content={"error": "Container failed", "details": res})
+
+    print(f"DEBUG: Container {creation_id} created. Polling starts...")
+
+    # 2. ASYNCHRONOUS Polling
+    for i in range(30): 
+        await asyncio.sleep(20) 
         
-#         target_ratio = 9/16
-#         current_ratio = w/h
+        status_res = requests.get(f"https://graph.facebook.com/v18.0/{creation_id}", params={
+            "fields": "status_code,status",
+            "access_token": access_token
+        }).json()
 
-#         # We will create a NEW file for Instagram no matter what
-#         processed_path = os.path.join("static", f"{unique_id}_final.mp4")
+        status_code = status_res.get("status_code")
+        print(f"DEBUG: Attempt {i+1} - {status_code}")
 
-#         if abs(current_ratio - target_ratio) > 0.01:
-#             print(f"DEBUG: Aspect ratio {current_ratio:.2f} is not 0.56. CROPPING...")
-#             new_w = h * target_ratio
-#             x1 = (w - new_w) / 2
-#             x2 = x1 + new_w
-#             # Center crop
-#             final_clip = clip.cropped(x1=x1, x2=x2, y1=0, y2=h)
-#         else:
-#             print("DEBUG: Aspect ratio is already correct. Just re-encoding...")
-#             final_clip = clip
-
-#         # Write the file (This is the most important step)
-#         final_clip.write_videofile(processed_path, codec="libx264", audio_codec="aac")
-#         final_clip.close()
-#         clip.close()
-
-#         # 3. Use the PROCESSED path for the URL
-#         final_filename = os.path.basename(processed_path)
-#         public_video_url = f"{BASE_URL}/static/{final_filename}"
-#         print(f"DEBUG: Instagram will download from: {public_video_url}")
-
-#         # 4. Container Creation
-#         payload = {
-#             "media_type": "REELS",
-#             "video_url": public_video_url,
-#             "caption": caption,
-#             "share_to_feed": "true",
-#             "access_token": access_token
-#         }
-
-#         container_res = requests.post(f"https://graph.facebook.com/v18.0/{instagram_id}/media", data=payload).json()
-#         if "id" not in container_res:
-#             return JSONResponse(status_code=400, content={"detail": f"Container failed: {container_res}"})
+        if status_code == "FINISHED":
+            # 3. Final Publish
+            publish_url = f"https://graph.facebook.com/v18.0/{instagram_id}/media_publish"
+            final_res = requests.post(publish_url, data={
+                "creation_id": creation_id,
+                "access_token": access_token
+            }).json()
+            return {"status": "success", "post_id": final_res.get("id")}
         
-#         creation_id = container_res["id"]
+        if status_code == "ERROR":
+            error_msg = status_res.get("status", "")
+            if "2207077" in error_msg or "2207076" in error_msg:
+                continue 
+            return JSONResponse(status_code=400, content={"error": "IG Error", "details": status_res})
 
-#         print("DEBUG: Container created. Waiting 30 seconds for IG to download...")
-#         time.sleep(30)
-        
-#         # 5. Polling (Waiting for IG to download and process)
-#         # 5. Polling
-#         for i in range(30):
-#             status_data = requests.get(f"https://graph.facebook.com/v18.0/{creation_id}", params={
-#                 "fields": "status_code,status",
-#                 "access_token": access_token
-#             }).json()
-
-#             print(f"DEBUG Status (Attempt {i+1}): {status_data}")
-
-#             if status_data.get("status_code") == "FINISHED":
-#                 break
-            
-#             # If we see 'IN_PROGRESS', just keep waiting
-#             if status_data.get("status_code") == "IN_PROGRESS":
-#                 time.sleep(10)
-#                 continue
-
-#             if status_data.get("status_code") == "ERROR":
-#                 # Check if it's actually an error or just needs more time
-#                 # We'll give it 3 retries even on 'ERROR' to be safe
-#                 if i < 3:
-#                     print("DEBUG: Caught a false-start error, retrying...")
-#                     time.sleep(15)
-#                     continue
-#                 return JSONResponse(status_code=400, content={"detail": f"IG rejected video: {status_data.get('status')}"})
-            
-#         # 6. Final Publish
-#         publish_res = requests.post(f"https://graph.facebook.com/v18.0/{instagram_id}/media_publish", data={
-#             "creation_id": creation_id,
-#             "access_token": access_token    
-#         }).json()
-
-#         return {"status": "success", "ig_post_id": publish_res.get("id")}
-    
-#     except Exception as e:
-#         print(f"ERROR: {str(e)}")
-#         raise HTTPException(status_code=500, detail=str(e))
-    
-#     finally:
-#         # 7. Wait for Instagram to finish downloading before deleting!
-#         # This is likely why you were getting 404s
-#         print("DEBUG: Waiting 15 seconds before deleting files...")
-        
+    return JSONResponse(status_code=408, content={"error": "Timeout or persistent IG error"})

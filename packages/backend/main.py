@@ -12,11 +12,18 @@ from routes import instagram, youtube
 
 app = FastAPI()
 
+# @app.middleware("http")
+# async def add_ngrok_skip_header(request: Request, call_next):
+#     response = await call_next(request)
+#     response.headers["ngrok-skip-browser-warning"] = "any-value"
+#     response.headers["x-ngrok-skip-browser-warning"] = "any-value"
+#     return response
+
 @app.middleware("http")
-async def add_ngrok_skip_header(request: Request, call_next):
+async def add_localtunnel_skip_header(request: Request, call_next):
     response = await call_next(request)
-    response.headers["ngrok-skip-browser-warning"] = "true"
-    response.headers["x-ngrok-skip-browser-warning"] = "true"
+    # This header bypasses the Localtunnel "Reminder" page for everyone
+    response.headers["bypass-tunnel-reminder"] = "true"
     return response
 
 # Set up static files

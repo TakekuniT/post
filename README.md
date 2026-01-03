@@ -29,4 +29,13 @@ You must first run ngrok to expose the backend to the internet.
 
 ngrok http 8000
 
+You must first run localtunnel to expose the backend to the internet.
+
+npm install -g localtunnel
+lt --port 8000 --subdomain taki-dev-xpost --host http://loca.lt
+
+Go to https://ipv4.icanhazip.com to find your public IP address.
+
+Paste the public IP address to the lt url.
+
 ## Setting up instagram account
