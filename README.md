@@ -27,6 +27,7 @@ uvicorn main:app --reload
 
 You must first run ngrok to expose the backend to the internet.
 
+ngrok config add-authtoken <YOUR_AUTHTOKEN>
 ngrok http 8000
 
 You must first run localtunnel to expose the backend to the internet.
@@ -38,4 +39,3 @@ Go to https://ipv4.icanhazip.com to find your public IP address.
 
 Paste the public IP address to the lt url.
 
-## Setting up instagram account

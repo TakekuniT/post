@@ -70,82 +70,163 @@ class TikTokService:
         print("[Token Check] Current token is still valid.")
         return account["access_token"]
 
+    # @staticmethod
+    # async def upload_video(user_id: str, file_path: str, caption: str):
+    #     print(f"DEBUG: Starting TikTok Upload...")
+    #     try:
+    #         print(f"DEBUG: Uploading {caption} to TikTok...")
+    #         token = TikTokService.get_valid_token(user_id)
+    #         video_size = os.path.getsize(file_path)
+            
+    #         # Use 5MB chunks for better stability
+    #         chunk_size = 5 * 1024 * 1024 
+    #         total_chunks = math.ceil(video_size / chunk_size)
+    #         if video_size < 50 * 1024 * 1024:
+    #             chunk_size = video_size
+    #             total_chunks = 1
+    #         else:
+    #             # Fallback for very large files
+    #             chunk_size = 10 * 1024 * 1024
+    #             total_chunks = math.ceil(video_size / chunk_size)
+
+    #         print(f"DEBUG: Total Chunks: {total_chunks}")
+    #         print(f"[Upload] File size: {video_size} | Chunk size: {chunk_size} | Total: {total_chunks}")
+    #         # --- STEP 1: INITIALIZE ---
+    #         # TikTok now prefers 'video.upload' scope
+    #         init_url = "https://open.tiktokapis.com/v2/post/publish/video/init/"
+    #         headers = {
+    #             "Authorization": f"Bearer {token}",
+    #             "Content-Type": "application/json; charset=UTF-8"
+    #         }
+            
+    #         # Quality Tip: TikTok likes titles without too many special chars in the init phase
+    #         body = {
+    #             "post_info": {
+    #                 "title": caption[:50],
+    #                 "privacy_level": "SELF_ONLY" 
+    #             },
+    #             "source_info": {
+    #                 "source": "FILE_UPLOAD",
+    #                 "video_size": video_size,
+    #                 "chunk_size": chunk_size,
+    #                 "total_chunk_count": total_chunks
+    #             }
+    #         }
+            
+    #         response = requests.post(init_url, json=body, headers=headers)
+    #         print(f"DEBUG: Status Code: {response.status_code}")
+    #         print(f"DEBUG: Response Body: {response.text}")
+    #         init_res = response.json()
+            
+    #         # --- DEBUGGING LINE ---
+    #         if "data" not in init_res:
+    #             print(f"DEBUG: TikTok Full Error Response: {init_res}")
+    #             raise Exception(f"Init Error: {init_res.get('error', {}).get('message', 'Unknown Error')}")
+
+    #         publish_id = init_res["data"]["publish_id"]
+    #         upload_url = init_res["data"]["upload_url"]
+
+    #         # --- STEP 2: CHUNKED UPLOAD ---
+            
+    #         with open(file_path, "rb") as f:
+    #             for i in range(total_chunks):
+    #                 chunk_data = f.read(chunk_size)
+    #                 start_byte = i * chunk_size
+    #                 end_byte = start_byte + len(chunk_data) - 1
+                    
+    #                 put_headers = {
+    #                     "Content-Type": "video/mp4",
+    #                     "Content-Range": f"bytes {start_byte}-{end_byte}/{video_size}"
+    #                 }
+                    
+    #                 res = requests.put(upload_url, data=chunk_data, headers=put_headers)
+                    
+    #                 if res.status_code not in [200, 201, 206]:
+    #                     raise Exception(f"Chunk {i} fail: {res.status_code}")
+                    
+    #                 print(f"TikTok: {int(((i+1)/total_chunks)*100)}% Uploaded")
+
+    #         return publish_id
+
+    #     except Exception as e:
+    #         print(f"TikTok Service Detailed Error: {str(e)}")
+    #         return None
+    
     @staticmethod
     async def upload_video(user_id: str, file_path: str, caption: str):
-        print(f"DEBUG: Starting TikTok Upload...")
         try:
-            print(f"DEBUG: Uploading {caption} to TikTok...")
+            print(f"DEBUG: Starting TikTok Upload for {caption}")
             token = TikTokService.get_valid_token(user_id)
+            
             video_size = os.path.getsize(file_path)
             
-            # Use 5MB chunks for better stability
-            chunk_size = 10 * 1024 * 1024 
-            total_chunks = math.ceil(video_size / chunk_size)
-            if video_size < 50 * 1024 * 1024:
+            # For files under 64MB, ALWAYS use 1 chunk. 
+            # This eliminates math errors with TikTok's validator.
+            if video_size < 64 * 1024 * 1024:
                 chunk_size = video_size
                 total_chunks = 1
             else:
-                # Fallback for very large files
+                # For large files, use 10MB chunks
                 chunk_size = 10 * 1024 * 1024
                 total_chunks = math.ceil(video_size / chunk_size)
 
-            print(f"DEBUG: Total Chunks: {total_chunks}")
-            print(f"[Upload] File size: {video_size} | Chunk size: {chunk_size} | Total: {total_chunks}")
-            # --- STEP 1: INITIALIZE ---
-            # TikTok now prefers 'video.upload' scope
+            print(f"[Upload] File: {video_size} | Chunk: {chunk_size} | Count: {total_chunks}")
+
+            # STEP 1: Initialize upload
             init_url = "https://open.tiktokapis.com/v2/post/publish/video/init/"
             headers = {
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json; charset=UTF-8"
             }
             
-            # Quality Tip: TikTok likes titles without too many special chars in the init phase
             body = {
                 "post_info": {
                     "title": caption[:50],
-                    "privacy_level": "SELF_ONLY" 
+                    "privacy_level": "SELF_ONLY"
                 },
                 "source_info": {
                     "source": "FILE_UPLOAD",
-                    "video_size": video_size,
-                    "chunk_size": chunk_size,
-                    "total_chunk_count": total_chunks
+                    "video_size": int(video_size),
+                    "chunk_size": int(chunk_size),
+                    "total_chunk_count": int(total_chunks)
                 }
             }
             
             response = requests.post(init_url, json=body, headers=headers)
-            print(f"DEBUG: Status Code: {response.status_code}")
-            print(f"DEBUG: Response Body: {response.text}")
             init_res = response.json()
             
-            # --- DEBUGGING LINE ---
             if "data" not in init_res:
-                print(f"DEBUG: TikTok Full Error Response: {init_res}")
+                print(f"DEBUG: TikTok Init Failed. Full Response: {init_res}")
                 raise Exception(f"Init Error: {init_res.get('error', {}).get('message', 'Unknown Error')}")
 
             publish_id = init_res["data"]["publish_id"]
             upload_url = init_res["data"]["upload_url"]
 
-            # --- STEP 2: CHUNKED UPLOAD ---
-            
+            # STEP 2: Chunked upload
             with open(file_path, "rb") as f:
                 for i in range(total_chunks):
-                    chunk_data = f.read(chunk_size)
                     start_byte = i * chunk_size
-                    end_byte = start_byte + len(chunk_data) - 1
+                    f.seek(start_byte)
+                    chunk_data = f.read(chunk_size)
                     
+                    actual_read_size = len(chunk_data)
+                    end_byte = start_byte + actual_read_size - 1
+
                     put_headers = {
                         "Content-Type": "video/mp4",
                         "Content-Range": f"bytes {start_byte}-{end_byte}/{video_size}"
                     }
-                    
+
+                    # TikTok upload_url is a pre-signed S3-style URL; it doesn't need the Bearer token
                     res = requests.put(upload_url, data=chunk_data, headers=put_headers)
-                    
+
                     if res.status_code not in [200, 201, 206]:
-                        raise Exception(f"Chunk {i} fail: {res.status_code}")
-                    
+                        print(f"DEBUG: Chunk {i} failed. Status: {res.status_code} Body: {res.text}")
+                        raise Exception(f"Chunk {i} failed: {res.status_code}")
+
                     print(f"TikTok: {int(((i+1)/total_chunks)*100)}% Uploaded")
 
+            print(f"TikTok upload complete! Publish ID: {publish_id}")
             return publish_id
 
         except Exception as e:

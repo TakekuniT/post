@@ -5,10 +5,11 @@ from fastapi.staticfiles import StaticFiles
 
 
 
+
 load_dotenv()
 
-from fastapi import FastAPI, APIRouter
-from routes import instagram, youtube, tiktok, facebook
+from fastapi import FastAPI, APIRouter, Request
+from routes import instagram, youtube, tiktok, facebook, publish
 
 app = FastAPI()
 
@@ -35,6 +36,7 @@ app.include_router(instagram.router, prefix="/instagram")
 app.include_router(youtube.router, prefix="/youtube")
 app.include_router(tiktok.router, prefix="/tiktok")
 app.include_router(facebook.router, prefix="/facebook")
+app.include_router(publish.router, prefix="/publish")
 
 
 @app.get("/")
