@@ -1,30 +1,19 @@
-import os
-from supabase import create_client, Client
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime
 
-# Initialize Supabase
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-supabase: Client = create_client(url, key)
+class SocialAccount(BaseModel):
+    """
+    This defines the 'Shape' of a row in your social_accounts table.
+    It helps Python catch errors if a field is missing.
+    """
+    user_id: str
+    platform: str  # 'youtube', 'tiktok', 'instagram'
+    access_token: str
+    refresh_token: Optional[str] = None
+    expires_at: datetime
+    instagram_business_id: Optional[str] = None
 
-class UserManager:
-    @staticmethod
-    def get_social_tokens(user_id: str, platform: str):
-        """Fetches tokens for a specific user and platform."""
-        response = supabase.table("social_accounts") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .eq("platform", platform) \
-            .single() \
-            .execute()
-        if response.data:
-            return response.data[0]
-        return None
+    class Config:
+        from_attributes = True # Allows Pydantic to read data from Supabase/SQL
 
-    @staticmethod
-    def save_social_account(user_id: str, platform: str, data: dict):
-        """Saves or updates tokens after a login/refresh."""
-        return supabase.table("social_accounts").upsert({
-            "user_id": user_id,
-            "platform": platform,
-            **data
-        }).execute()

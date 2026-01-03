@@ -1,8 +1,8 @@
 import os
 import requests
 import time
-from utils.supabase import UserManager
-from datetime import datetime, timedelta
+from utils.db_client import UserManager
+from datetime import datetime, timedelta, timezone
 
 class InstagramService:
     @staticmethod
@@ -17,8 +17,9 @@ class InstagramService:
 
         # 1. Check if the token needs refreshing
         # We refresh once it's within 15 days of expiring (45 days old)
-        expires_at = datetime.fromisoformat(account["expires_at"])
-        if datetime.utcnow() + timedelta(days=15) > expires_at:
+        expires_at_str = account["expires_at"].replace('Z', '+00:00')
+        expires_at = datetime.fromisoformat(expires_at_str)
+        if datetime.now(timezone.utc) + timedelta(days=15) > expires_at:
             print(f"Instagram token for {user_id} is getting old. Refreshing...")
 
             # 2. Exchange old long-lived token for a NEW long-lived token
@@ -78,7 +79,7 @@ class InstagramService:
             # --- STEP 2: Upload the Bytes (Resumable) ---
             # Instagram uses a specific 'rupload' host for pushing binaries
             upload_url = f"https://rupload.facebook.com/ig-api-upload/{container_id}"
-            
+
             with open(file_path, "rb") as f:
                 headers = {
                     "Authorization": f"Bearer {token}",
@@ -86,11 +87,18 @@ class InstagramService:
                     "file_size": str(file_size),
                     "Content-Type": "application/octet-stream"
                 }
-                upload_res = requests.post(upload_url, data=f, headers=headers).json()
+                response = requests.post(upload_url, data=f, headers=headers)
+                upload_res = response.json()
 
-            if upload_res.get("status") != "success":
+            # Fix: Instagram resumable upload returns {'success': True} 
+            # instead of {'status': 'success'}
+            if not upload_res.get("success"):
                 raise Exception(f"Instagram Bytes Upload Failed: {upload_res}")
+            
+            print("Bytes uploaded to Instagram. Starting processing wait...")
 
+
+           
             # --- STEP 3: Wait for Processing ---
             # Instagram must process the video before it can be published.
             # We check the status every few seconds.

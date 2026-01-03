@@ -47,7 +47,7 @@ class OAuthManager:
         
         data = {
             "client_key": self.tiktok_client_id,
-            "client_secret": self.tiktok_client_secret,
+            "client_secret": self.tiktok_client_secret, 
             "code": code,
             "grant_type": "authorization_code",
             "redirect_uri": os.getenv("TIKTOK_REDIRECT_URI"),

@@ -3,7 +3,7 @@ import google.oauth2.credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.auth.transport.requests import Request
-from utils.supabase import UserManager
+from utils.db_client import UserManager
 
 class YouTubeService:
     @staticmethod
