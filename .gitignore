@@ -27,15 +27,19 @@ packages/backend/.env
 # ===========================
 # iOS / Xcode
 # ===========================
-# Xcode
-apps/ios/DerivedData/
-apps/ios/build/
-apps/ios/*.xcworkspace
-apps/ios/*.xcuserdata
-apps/ios/Pods/
+# The ** matches any folder name inside apps/ios/
+apps/ios/**/DerivedData/
+apps/ios/**/build/
+apps/ios/**/*.xcworkspace
+apps/ios/**/*.xcuserdata
+apps/ios/**/Pods/
+apps/ios/**/.build/
+apps/ios/**/*.xcuserstate
 
 # Swift Package Manager
 apps/ios/.build/
+.swiftpm/xcode/package.resolved
+.build/
 
 # OS files
 .DS_Store
