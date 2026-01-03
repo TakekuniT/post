@@ -3,7 +3,6 @@ import requests
 from fastapi import APIRouter, Request, Form, File, UploadFile, BackgroundTasks, Response, HTTPException
 from fastapi.responses import RedirectResponse
 from utils.oauth import OAuthManager
-from models.user import UserManager
 from urllib.parse import quote
 
 router = APIRouter()

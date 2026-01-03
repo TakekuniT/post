@@ -16,6 +16,7 @@ packages/backend/*.egg-info/
 packages/backend/dist/
 packages/backend/build/
 packages/backend/static/
+packages/backend/seed_db.py
 
 # Logs
 *.log
