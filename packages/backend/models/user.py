@@ -16,7 +16,9 @@ class UserManager:
             .eq("platform", platform) \
             .single() \
             .execute()
-        return response.data
+        if response.data:
+            return response.data[0]
+        return None
 
     @staticmethod
     def save_social_account(user_id: str, platform: str, data: dict):

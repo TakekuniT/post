@@ -18,6 +18,11 @@ class OAuthManager:
         self.ig_client_secret = os.getenv("INSTAGRAM_CLIENT_SECRET")
         self.ig_redirect_uri = os.getenv("INSTAGRAM_REDIRECT_URI")
 
+        # TikTok Credentials
+        self.tiktok_client_id = os.getenv("TIKTOK_CLIENT_ID")
+        self.tiktok_client_secret = os.getenv("TIKTOK_CLIENT_SECRET")
+        self.tiktok_redirect_uri = os.getenv("TIKTOK_REDIRECT_URI")
+
 
     # --- TIKTOK / TIKTOK LOGIC ---
     def generate_pkce_pair(self):
@@ -41,12 +46,26 @@ class OAuthManager:
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         
         data = {
-            "client_key": os.getenv("TIKTOK_CLIENT_ID"),
-            "client_secret": os.getenv("TIKTOK_CLIENT_SECRET"),
+            "client_key": self.tiktok_client_id,
+            "client_secret": self.tiktok_client_secret,
             "code": code,
             "grant_type": "authorization_code",
             "redirect_uri": os.getenv("TIKTOK_REDIRECT_URI"),
             "code_verifier": verifier  # This is why we needed the state/cookie!
+        }
+        
+        response = requests.post(url, data=data, headers=headers)
+        return response.json()
+    
+    def refresh_tiktok_token(self, refresh_token: str):
+        url = "https://open.tiktokapis.com/v2/oauth/token/"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        
+        data = {
+            "client_key": os.getenv("TIKTOK_CLIENT_ID"),
+            "client_secret": os.getenv("TIKTOK_CLIENT_SECRET"),
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token
         }
         
         response = requests.post(url, data=data, headers=headers)

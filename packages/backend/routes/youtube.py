@@ -1,3 +1,4 @@
+import shutil
 from fastapi import APIRouter, UploadFile, Form, File
 from fastapi.responses import RedirectResponse, JSONResponse
 from googleapiclient.discovery import build
@@ -73,8 +74,12 @@ async def upload_short(
     
     # save file temp
     temp_path = f"/tmp/{file.filename}"
-    with open(temp_path, "wb") as f:
-        f.write(file.file.read())
+    try:
+        with open(temp_path, "wb") as f:
+            #f.write(file.file.read())
+            shutil.copyfileobj(file.file, f)
+    except Exception as e:
+        return {"error": f"Failed to save temp file: {str(e)}"}
     
     # check if video is short
     # try:
@@ -95,21 +100,33 @@ async def upload_short(
         # set access token
         #youtube._http.headers.update({"Authorization": f"Bearer {access_token}"})
 
-        media = MediaFileUpload(temp_path, chunksize=-1, resumable=True)
+        #media = MediaFileUpload(temp_path, chunksize=-1, resumable=True)
+        media = MediaFileUpload(
+            temp_path, 
+            mimetype='video/mp4', # Be explicit about type
+            chunksize=1024*1024,  # 1MB chunks
+            resumable=True
+        )
         request = youtube.videos().insert(
             part="snippet,status",
             body={
                 "snippet": {
                     "title": f"{title}",
                     "description": f"{description}",
+                    "categoryId": "22"
                 },
                 "status": {
                     "privacyStatus": "public",
+                    "selfDeclaredMadeForKids": False
                 }
             },
             media_body=media
         )
-        response = request.execute()
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            if status:
+                print(f"Uploaded {int(status.progress() * 100)}%")
         return {"message": "Video uploaded successfully", "video_id": response["id"]}
     except Exception as e:
         return {"error": str(e)}
