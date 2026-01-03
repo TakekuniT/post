@@ -7,7 +7,7 @@ key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(url, key)
 
 class UserManager:
-    @staticmethodh
+    @staticmethod
     def get_social_tokens(user_id: str, platform: str):
         """Fetches tokens for a specific user and platform."""
         response = supabase.table("social_accounts") \
