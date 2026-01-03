@@ -114,7 +114,27 @@ async def facebook_callback(request: Request, code: str):
                     # "instagram_business_id": page.get("instagram_business_account", {}).get("id")
                 }
                 pages_list.append(page_info)
-
+        print(f"DEBUG: accounts: {accounts_res}")
+        """
+            account_res: {
+                "data": [
+                    {
+                        "name": facebook-page-name,
+                        "instagram_business_account": {
+                            "id": ig-business-account-id
+                        },
+                        "id": facebook-page-id,
+                        "access_token": access-token
+                    }
+                ],
+                "paging": {
+                    "cursors": {
+                        "before": before-cursor,
+                        "after": after-cursor
+                    }
+                }
+            }
+        """
         return {
             "status": "success",
             "token_data": pages_list 

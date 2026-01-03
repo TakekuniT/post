@@ -106,7 +106,40 @@ def instagram_callback(code: str = None):
             })
     if not ig_accounts:
         return {"error": "No IG business account found. Ensure your IG is Business/Creator and linked to a FB page."}
+    print(f"DEBUG: accounts: {accounts_res}")
+    """
     
+    accounts_res: {
+        "data": [
+            {
+                "name": facebook-page-name,
+                "instagram_business_account": {
+                    "id": ig-business-account-id
+                },
+                "id": facebook-page-id,
+            }
+        ],
+        "paging": {
+            "cursors": {
+                "before": before-cursor,
+                "after": after-cursor
+            }
+        }
+    }
+
+    token_res: {
+        "access_token": access-token,
+        "token_type": token-type,
+        "instagram_accounts": [
+            {
+                "page_name": facebook-page-name,
+                "instagram_id": ig-business-account-id
+            }
+        ]
+    }
+
+
+    """
     return {
         "status": "success", 
         "token_data": token_res, 

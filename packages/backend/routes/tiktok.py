@@ -4,6 +4,8 @@ from fastapi import APIRouter, Request, Form, File, UploadFile, BackgroundTasks,
 from fastapi.responses import RedirectResponse
 from utils.oauth import OAuthManager
 from urllib.parse import quote
+import datetime
+
 
 router = APIRouter()
 oauth = OAuthManager()
@@ -34,11 +36,23 @@ async def tiktok_callback(code: str, state: str, user_id: str = "your_test_user_
     token_data = oauth.exchange_tiktok_code(code, state)
     
     if "access_token" in token_data:
-        import datetime
         expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=token_data['expires_in'])
        
         return {"status": "success", "token_data": token_data}
+    """
+
+    token_data: {
+        "access_token": access-token,
+        "expires_in": expires-in-seconds,
+        "open_id": open-id,
+        "refresh_token": refresh-token,
+        "scope": scope,
+        "token_type": token-type
+    }
+
+    where open_id is the tiktok user id
     
+    """
     return {"status": "error", "details": token_data}
 
 @router.post("/upload-tiktok")
