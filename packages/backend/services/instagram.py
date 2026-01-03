@@ -47,9 +47,9 @@ class InstagramService:
             }
             UserManager.save_social_account(user_id, "instagram", update_data)
             
-            return response["access_token"], account["instagram_business_id"]
+            return response["access_token"], account["platform_user_id"]
 
-        return account["access_token"], account["instagram_business_id"]
+        return account["access_token"], account["platform_user_id"]
 
     @staticmethod
     async def upload_video(user_id: str, file_path: str, caption: str):

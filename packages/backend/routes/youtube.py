@@ -53,6 +53,17 @@ def youtube_callback(code: str):
         return {"error": response.json()}
     
     tokens = response.json()
+    """
+        tokens: {
+            "access_token": access-token,
+            "expires_in": expires-in-seconds,
+            "refresh_token": refresh-token,
+            "scope": scope,
+            "token_type": token-type
+        }
+
+        use access_token to retrieve channel id
+    """
     return {"status": "success", "token_data": tokens}
 
 
