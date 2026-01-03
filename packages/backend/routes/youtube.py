@@ -52,7 +52,7 @@ def youtube_callback(code: str):
         return {"error": response.json()}
     
     tokens = response.json()
-    return tokens
+    return {"status": "success", "token_data": tokens}
 
 
 

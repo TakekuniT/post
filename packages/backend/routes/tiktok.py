@@ -31,11 +31,13 @@ def tiktok_login():
     return RedirectResponse(auth_url)
 
 @router.get("/callback")
-async def tiktok_callback(code: str, state: str):
-    # Now we get the verifier directly from the URL!
+async def tiktok_callback(code: str, state: str, user_id: str = "your_test_user_id"):
     token_data = oauth.exchange_tiktok_code(code, state)
     
     if "access_token" in token_data:
-        return {"status": "success", "token": token_data["access_token"][:10]}
+        import datetime
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=token_data['expires_in'])
+       
+        return {"status": "success", "token_data": token_data}
     
     return {"status": "error", "details": token_data}
