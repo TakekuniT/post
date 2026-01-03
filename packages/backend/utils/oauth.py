@@ -6,6 +6,7 @@ import hashlib
 import base64
 import secrets
 
+
 class OAuthManager:
     def __init__(self):
         # YouTube Credentials
@@ -22,6 +23,11 @@ class OAuthManager:
         self.tiktok_client_id = os.getenv("TIKTOK_CLIENT_ID")
         self.tiktok_client_secret = os.getenv("TIKTOK_CLIENT_SECRET")
         self.tiktok_redirect_uri = os.getenv("TIKTOK_REDIRECT_URI")
+
+        # Facebook Credentials
+        self.fb_client_id = os.getenv("FACEBOOK_CLIENT_ID")
+        self.fb_client_secret = os.getenv("FACEBOOK_CLIENT_SECRET")
+        self.fb_redirect_uri = os.getenv("FACEBOOK_REDIRECT_URI")
 
 
     # --- TIKTOK / TIKTOK LOGIC ---
@@ -57,20 +63,45 @@ class OAuthManager:
         response = requests.post(url, data=data, headers=headers)
         return response.json()
     
+    
+
     def refresh_tiktok_token(self, refresh_token: str):
+        """
+        Uses the current refresh_token to get a NEW access_token 
+        and a NEW refresh_token from TikTok.
+        """
         url = "https://open.tiktokapis.com/v2/oauth/token/"
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         
         data = {
-            "client_key": os.getenv("TIKTOK_CLIENT_ID"),
+            "client_key": os.getenv("TIKTOK_CLIENT_KEY"), # TikTok calls it Client Key
             "client_secret": os.getenv("TIKTOK_CLIENT_SECRET"),
             "grant_type": "refresh_token",
             "refresh_token": refresh_token
         }
         
-        response = requests.post(url, data=data, headers=headers)
-        return response.json()
-    
+        try:
+            response = requests.post(url, data=data, headers=headers)
+            res_data = response.json()
+            
+            # TikTok returns error details inside the JSON even with a 200 status
+            if "access_token" in res_data:
+                return {
+                    "success": True,
+                    "access_token": res_data["access_token"],
+                    "refresh_token": res_data["refresh_token"], # SAVE THIS! The old one is now invalid
+                    "expires_at": (datetime.utcnow() + timedelta(seconds=res_data["expires_in"])).isoformat(),
+                    "refresh_expires_at": (datetime.utcnow() + timedelta(seconds=res_data["refresh_expires_in"])).isoformat()
+                }
+            else:
+                return {
+                    "success": False, 
+                    "error": res_data.get("error_description", "Failed to refresh TikTok token")
+                }
+                
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+        
 
     # --- YOUTUBE / GOOGLE LOGIC ---
 
@@ -119,3 +150,38 @@ class OAuthManager:
         }
         response = requests.get(url, params=params)
         return response.json()
+    
+    # --- FACEBOOK / META LOGIC ---
+    def refresh_fb_long_lived_token(current_token: str):
+        """
+        Exchanges a valid long-lived token for a new long-lived token.
+        Extends the expiration back to 60 days from today.
+        """
+        url = "https://graph.facebook.com/v19.0/oauth/access_token"
+        
+        params = {
+            "grant_type": "fb_exchange_token",
+            "client_id": self.fb_client_id,
+            "client_secret": self.fb_client_secret,
+            "fb_exchange_token": current_token
+        }
+        
+        try:
+            response = requests.get(url, params=params)
+            data = response.json()
+            
+            if "access_token" in data:
+                # Facebook long-lived tokens usually last 60 days
+                expires_in_seconds = data.get("expires_in", 5184000) # Default to 60 days
+                new_expiry = datetime.utcnow() + timedelta(seconds=expires_in_seconds)
+                
+                return {
+                    "success": True,
+                    "access_token": data["access_token"],
+                    "expires_at": new_expiry.isoformat()
+                }
+            else:
+                return {"success": False, "error": data.get("error", "Unknown error")}
+                
+        except Exception as e:
+            return {"success": False, "error": str(e)}

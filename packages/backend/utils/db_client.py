@@ -43,3 +43,16 @@ class UserManager:
             "platform": platform,
             **data
         }).execute()
+    
+
+    
+    @staticmethod
+    def update_social_account(user_id: str, platform: str, data: dict):
+        """Updates tokens only for a specific user and platform."""
+        return (
+            supabase.table("social_accounts")
+            .update(data)
+            .eq("user_id", user_id)
+            .eq("platform", platform)
+            .execute()
+        )
