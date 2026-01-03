@@ -1,13 +1,35 @@
 import os
 from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
+
+
 
 
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from routes import instagram, youtube
 
 app = FastAPI()
+
+# @app.middleware("http")
+# async def add_ngrok_skip_header(request: Request, call_next):
+#     response = await call_next(request)
+#     response.headers["ngrok-skip-browser-warning"] = "any-value"
+#     response.headers["x-ngrok-skip-browser-warning"] = "any-value"
+#     return response
+
+@app.middleware("http")
+async def add_localtunnel_skip_header(request: Request, call_next):
+    response = await call_next(request)
+    # This header bypasses the Localtunnel "Reminder" page for everyone
+    response.headers["bypass-tunnel-reminder"] = "true"
+    return response
+
+# Set up static files
+if not os.path.exists("static"):
+    os.mkdir("static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(instagram.router, prefix="/instagram")
 app.include_router(youtube.router, prefix="/youtube")

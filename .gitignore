@@ -15,6 +15,7 @@ packages/backend/.venv/
 packages/backend/*.egg-info/
 packages/backend/dist/
 packages/backend/build/
+packages/backend/static/
 
 # Logs
 *.log
