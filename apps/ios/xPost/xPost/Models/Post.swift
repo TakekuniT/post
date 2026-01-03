@@ -9,9 +9,9 @@ import Foundation
 
 // 'Codable' allows this to be turned into JSON automatically
 struct Post: Codable {
-    var userId: String
+    var user_id: String
     var caption: String
     var title: String // for youtube
-    var videoPath: String
+    var video_path: String
     var platforms: [String] // e.g., ["facebook", "instagram"]
 }
