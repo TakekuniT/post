@@ -10,6 +10,7 @@ import shutil
 from moviepy import VideoFileClip
 import moviepy.video.fx as fix
 import asyncio  
+from utils.db_client import UserManager
 
 
 router = APIRouter()
@@ -53,100 +54,103 @@ def test_instagram():
     return {"message": "Instagram route is working"}
 
 @router.get("/login")
-def instagram_login():
+def instagram_login(user_id: str):
     auth_params = {
         "client_id": CLIENT_ID,
         "redirect_uri": REDIRECT_URI,
         "scope": ",".join(SCOPES),
         "response_type": "code",
+        "state": user_id
     }
-    #auth_url = "https://api.instagram.com/oauth/authorize?" + urllib.parse.urlencode(auth_params)
     auth_url = "https://www.facebook.com/v18.0/dialog/oauth?" + urllib.parse.urlencode(auth_params)
     return RedirectResponse(auth_url)
 
 @router.get("/callback")
-def instagram_callback(code: str = None):
+async def instagram_callback(code: str = None, state: str = None):
     if not code:
-        return JSONResponse({"error": "No code provided"}, status_code=400)
+        raise HTTPException(status_code=400, detail="No code provided")
     
-    # exchange code for user access token
-    
-    # token_url = "https://api.instagram.com/oauth/access_token"
-    token_url = "https://graph.facebook.com/v18.0/oauth/access_token"
-    data = {
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "redirect_uri": REDIRECT_URI,
-        "grant_type": "authorization_code",
-        "code": code
-    }
-    # response = requests.post(token_url, data=data)
-    # if response.status_code != 200:
-    #     return {"error": response.json()}
-    # tokens = response.json()
-    # return tokens
-    token_res = requests.get(token_url, params=data).json()
-    access_token = token_res.get("access_token")
-    print(f"DEBUG: Success! Access Token received (starts with: {access_token[:10]}...)")
-    
-
-    # find instagram business account
-    accounts_url = f"https://graph.facebook.com/v18.0/me/accounts?fields=name,instagram_business_account&access_token={access_token}"
-    accounts_res = requests.get(accounts_url).json()
-    print(f"RAW DATA FROM FACEBOOK: {accounts_res}")
-
-    # extract id (let users choose from the list)
-    pages = accounts_res.get("data", [])
-    ig_accounts = []
-    for page in pages:
-        if "instagram_business_account" in page:
-            ig_accounts.append({
-                "page_name": page["name"],
-                "instagram_id": page["instagram_business_account"]["id"]
-            })
-    if not ig_accounts:
-        return {"error": "No IG business account found. Ensure your IG is Business/Creator and linked to a FB page."}
-    print(f"DEBUG: accounts: {accounts_res}")
-    """
-    
-    accounts_res: {
-        "data": [
-            {
-                "name": facebook-page-name,
-                "instagram_business_account": {
-                    "id": ig-business-account-id
-                },
-                "id": facebook-page-id,
-            }
-        ],
-        "paging": {
-            "cursors": {
-                "before": before-cursor,
-                "after": after-cursor
-            }
+    user_id = state
+    try:
+        # 1. Exchange Code for Short-Lived Access Token
+        token_url = "https://graph.facebook.com/v19.0/oauth/access_token"
+        token_params = {
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "redirect_uri": REDIRECT_URI,
+            "grant_type": "authorization_code",
+            "code": code
         }
-    }
+        short_res = requests.get(token_url, params=token_params).json()
+        short_token = short_res.get("access_token")
 
-    token_res: {
-        "access_token": access-token,
-        "token_type": token-type,
-        "instagram_accounts": [
-            {
-                "page_name": facebook-page-name,
-                "instagram_id": ig-business-account-id
+        if not short_token:
+            raise HTTPException(status_code=400, detail=f"Token exchange failed: {short_res}")
+
+        # 2. Exchange for Long-Lived User Token
+        ll_url = "https://graph.facebook.com/v19.0/oauth/access_token"
+        ll_params = {
+            "grant_type": "fb_exchange_token",
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "fb_exchange_token": short_token
+        }
+        ll_res = requests.get(ll_url, params=ll_params).json()
+        user_access_token = ll_res.get("access_token")
+
+        # 3. Get Pages and their linked Instagram Business IDs
+        accounts_url = "https://graph.facebook.com/v19.0/me/accounts"
+        accounts_res = requests.get(accounts_url, params={
+            "fields": "name,access_token,instagram_business_account",
+            "access_token": user_access_token
+        }).json()
+
+        saved_accounts = []
+
+        # 4. Filter for Instagram accounts and save to DB
+        if "data" in accounts_res:
+            for page in accounts_res["data"]:
+                ig_business = page.get("instagram_business_account")
+                
+                if ig_business:
+                    ig_id = ig_business.get("id")
+                    # IMPORTANT: Instagram Graph API uses the Page Access Token 
+                    # for publishing/reading business content.
+                    page_token = page.get("access_token") 
+                    
+                    # Matches save_social_account signature:
+                    # (user_id, platform, access_token, refresh_token, expires_at, platform_user_id)
+                    UserManager.save_social_account(
+                        user_id,
+                        "instagram",
+                        page_token,
+                        None,  # No refresh token for IG/FB flow
+                        "2099-01-01T00:00:00",
+                        ig_id
+                    )
+                    
+                    saved_accounts.append({
+                        "instagram_id": ig_id,
+                        "name": page.get("name")
+                    })
+
+        if not saved_accounts:
+            return {
+                "status": "error", 
+                "message": "No Instagram Business accounts found linked to your Pages."
             }
-        ]
-    }
 
+        return {
+            "status": "success",
+            "message": f"Successfully connected {len(saved_accounts)} Instagram accounts",
+            "accounts": saved_accounts
+        }
 
-    """
-    return {
-        "status": "success", 
-        "token_data": token_res, 
-        "instagram_accounts": ig_accounts
-    }
-
-
+    except Exception as e:
+        print(f"ERROR in IG Callback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
 async def process_and_publish_reel(creation_id, instagram_id, access_token, paths_to_delete):
     print(f"DEBUG: Background task started for container {creation_id}")
     
