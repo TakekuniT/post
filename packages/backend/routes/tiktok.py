@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 from utils.oauth import OAuthManager
 from urllib.parse import quote
 import datetime
-
+from utils.db_client import UserManager
 
 router = APIRouter()
 oauth = OAuthManager()
@@ -16,8 +16,13 @@ def test_tiktok():
     return {"message": "TikTok route is working"}
 
 @router.get("/login")
-def tiktok_login():
+def tiktok_login(user_id: str):
+    # 1. Generate PKCE pair
     verifier, challenge = oauth.generate_pkce_pair()
+    
+    # 2. We need to store both the verifier AND the user_id. 
+    # A common way is to combine them in the state (e.g., "verifier:user_id")
+    state_payload = f"{verifier}:{user_id}"
     
     auth_url = (
         f"https://www.tiktok.com/v2/auth/authorize/"
@@ -27,34 +32,51 @@ def tiktok_login():
         f"&redirect_uri={os.getenv('TIKTOK_REDIRECT_URI')}"
         f"&code_challenge={challenge}"
         f"&code_challenge_method=S256"
-        f"&state={verifier}"
+        f"&state={state_payload}"
     )
     return RedirectResponse(auth_url)
 
 @router.get("/callback")
-async def tiktok_callback(code: str, state: str, user_id: str = "your_test_user_id"):
-    token_data = oauth.exchange_tiktok_code(code, state)
+async def tiktok_callback(code: str, state: str):
+    try:
+        # 1. Deconstruct the state to get the verifier and user_id
+        if ":" not in state:
+            raise HTTPException(status_code=400, detail="Invalid state parameter")
+        
+        verifier, user_id = state.split(":", 1)
+
+        # 2. Exchange code for tokens (TikTok requires the verifier/state here)
+        token_data = oauth.exchange_tiktok_code(code, verifier)
+        
+        if "access_token" not in token_data:
+            return {"status": "error", "details": token_data}
+
+        # 3. Calculate expiration
+        # TikTok usually gives expires_in (often 24 hours)
+        expires_in = token_data.get("expires_in", 86400)
+        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)).isoformat()
+
+        # 4. Save to Database
+        # Matches: (user_id, platform, access_token, refresh_token, expires_at, platform_user_id)
+        UserManager.save_social_account(
+            user_id,
+            "tiktok",
+            token_data["access_token"],
+            token_data.get("refresh_token"),
+            expires_at,
+            token_data.get("open_id") # This is the TikTok unique User ID
+        )
+
+        return {
+            "status": "success", 
+            "message": "TikTok account connected successfully",
+            "tiktok_user_id": token_data.get("open_id")
+        }
+
+    except Exception as e:
+        print(f"ERROR in TikTok Callback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     
-    if "access_token" in token_data:
-        expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=token_data['expires_in'])
-       
-        return {"status": "success", "token_data": token_data}
-    """
-
-    token_data: {
-        "access_token": access-token,
-        "expires_in": expires-in-seconds,
-        "open_id": open-id,
-        "refresh_token": refresh-token,
-        "scope": scope,
-        "token_type": token-type
-    }
-
-    where open_id is the tiktok user id
-    
-    """
-    return {"status": "error", "details": token_data}
-
 @router.post("/upload-tiktok")
 async def upload_tiktok(
     video_file: UploadFile = File(...),
