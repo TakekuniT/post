@@ -21,8 +21,39 @@ extension Color {
     static let brandPurple = Color(red: 0.55, green: 0.35, blue: 0.95)
     
     static let themeBackground = Color(UIColor.systemGroupedBackground)
+    static let roseRed = Color(red: 0.85, green: 0.30, blue: 0.45)
+}
+struct Haptics {
+    static func selection() {
+        let generator = UISelectionFeedbackGenerator()
+        generator.selectionChanged()
+    }
+    
+    static func success() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+    }
 }
 
+struct AnimatedCheckmark: View {
+    @State private var percentage: CGFloat = 0
+
+    var body: some View {
+        Path { path in
+            path.move(to: CGPoint(x: 2, y: 5))
+            path.addLine(to: CGPoint(x: 5, y: 8))
+            path.addLine(to: CGPoint(x: 10, y: 2))
+        }
+        .trim(from: 0, to: percentage)
+        .stroke(Color.brandPurple, lineWidth: 2)
+        .frame(width: 12, height: 10)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.2)) {
+                percentage = 1
+            }
+        }
+    }
+}
 struct AccountView: View {
     @State private var userEmail: String = "Loading..."
     @State private var userId: String = ""
@@ -92,14 +123,27 @@ struct AccountView: View {
 
                     // MARK: - Danger Zone
                     Section {
-                        Button(role: .destructive, action: signOut) {
+                        Button(role: .destructive, action: {
+                            Haptics.selection()
+                            signOut()
+                        }) {
                             HStack {
                                 Spacer()
                                 Text("Sign Out")
                                     .fontWeight(.semibold)
                                 Spacer()
                             }
+                            .padding(.vertical, 10)
+                            .background(Color.roseRed.opacity(0.12))
+                            .foregroundColor(.roseRed)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.roseRed.opacity(0.4), lineWidth: 1.5)
+                            )
                         }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Color.clear)
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -121,50 +165,71 @@ struct AccountView: View {
         let assetName = platformAssets[id] ?? "link"
         
         HStack(spacing: 16) {
-           
-            Image(assetName)
-                .resizable()
-                .renderingMode(.template)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 28, height: 28)
-                .padding(6)
-                .background(Color.brandPurple.opacity(0.1))
-                .foregroundColor(.brandPurple)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+            // Icon Container
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.brandPurple.opacity(0.12))
+                
+                Image(assetName)
+                    .resizable()
+                    .renderingMode(.template)
+                    .aspectRatio(contentMode: .fit)
+                    .padding(7)
+                    .foregroundColor(.brandPurple)
+            }
+            .frame(width: 36, height: 36)
+            .shadow(color: Color.brandPurple.opacity(0.15), radius: 4, x: 0, y: 2)
+            
             VStack(alignment: .leading, spacing: 2) {
                 Text(id.capitalized)
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                 
-                Text(isConnected ? "Active Connection" : "Not Linked")
-                    .font(.caption2)
-                    .foregroundColor(isConnected ? .brandPurple : .secondary)
-                    .fontWeight(isConnected ? .bold : .regular)
+                HStack(spacing: 4) {
+                    if isConnected {
+                        AnimatedCheckmark() // The animated drawing
+                        Text("Linked")
+                            .font(.caption2)
+                            .foregroundColor(.brandPurple)
+                            .fontWeight(.bold)
+                    } else {
+                        Text("Not Linked")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             
             Spacer()
             
-            // Premium Button Logic
             Button(action: {
-                if isConnected { disconnectPlatform(id) }
-                else { startSocialLogin(platform: id) }
+                Haptics.selection()
+                if isConnected {
+                    disconnectPlatform(id)
+                } else {
+                    startSocialLogin(platform: id)
+                }
             }) {
                 Text(isConnected ? "Disconnect" : "Connect")
-                    .font(.system(size: 14, weight: .bold))
-                    .padding(.horizontal, 16)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .frame(width: 100)
                     .padding(.vertical, 8)
-                    .background(isConnected ? Color.gray.opacity(0.1) : Color.brandPurple.opacity(0.15))
-                    .foregroundColor(isConnected ? .red : .brandPurple)
+                    .background(
+                        isConnected ?
+                        Color.roseRed.opacity(0.12) : // Muted Rose background
+                        Color.brandPurple
+                    )
+                    .foregroundColor(isConnected ? .roseRed : .white)
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
-                            .strokeBorder(isConnected ? Color.red.opacity(0.2) : Color.brandPurple.opacity(0.3), lineWidth: 1)
+                            .stroke(isConnected ? Color.roseRed.opacity(0.4) : Color.clear, lineWidth: 1.5)
                     )
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
+    
     // MARK: - Logic Updates
     
     func checkConnections() async {
@@ -172,9 +237,16 @@ struct AccountView: View {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             if let list = try? JSONDecoder().decode([String].self, from: data) {
+                let newSet = Set(list)
+                
                 await MainActor.run {
-                    withAnimation {
-                        self.connectedPlatforms = Set(list)
+                    // If we just gained a new connection, vibrate!
+                    if newSet.count > self.connectedPlatforms.count {
+                        Haptics.success() // Satisfying double-tap haptic
+                    }
+                    
+                    withAnimation(.spring()) {
+                        self.connectedPlatforms = newSet
                     }
                 }
             }
@@ -182,14 +254,14 @@ struct AccountView: View {
             print("Failed to fetch connections")
         }
     }
-
+    
     func startSocialLogin(platform: String) {
         guard !userId.isEmpty else { return }
         guard let authURL = URL(string: "\(backendBaseUrl)/\(platform)/login?user_id=\(userId)") else { return }
 
         let session = ASWebAuthenticationSession(url: authURL, callbackURLScheme: "xpost") { _, error in
             if error == nil {
-                // 🔥 CRITICAL: Refresh connections immediately after the web view closes
+            
                 Task {
                     // Small delay to allow backend processing to finish
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
