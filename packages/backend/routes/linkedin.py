@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from utils.db_client import UserManager
 from urllib.parse import urlencode
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter()
 
@@ -59,6 +60,7 @@ async def linkedin_callback(request: Request, code: str, state: str):
         
         access_token = res.get("access_token")
         expires_in = res.get("expires_in", 5184000) # Defaults to ~60 days
+        expiry_date = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
 
         if not access_token:
             raise HTTPException(status_code=400, detail=f"Token exchange failed: {res}")
@@ -79,8 +81,8 @@ async def linkedin_callback(request: Request, code: str, state: str):
             user_id,
             "linkedin",
             access_token,
-            None,  # LinkedIn doesn't always provide a refresh token for member_social
-            expires_in, # Or calculate expires_at using 'expires_in'
+            res.get("refresh_token"),  # LinkedIn doesn't always provide a refresh token for member_social
+            expiry_date, # Or calculate expires_at using 'expires_in'
             linkedin_id
         )
 

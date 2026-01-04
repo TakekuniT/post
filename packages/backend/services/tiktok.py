@@ -11,35 +11,25 @@ class TikTokService:
         account = UserManager.get_social_tokens(user_id, "tiktok")
         
         if not account:
-            print("[Token Check] No TikTok account found in database.")
+            print("[Token Check] No TikTok account found.")
             raise Exception("TikTok account not linked.")
 
-        # Handle potential date formatting issues from Supabase
+        # 1. Parse the expiry date safely
         try:
             expires_at_str = account.get("expires_at", "")
-            if not expires_at_str:
-                raise Exception("Field 'expires_at' is missing in database row.")
-                
             expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
         except Exception as e:
             print(f"[Token Check] Date parsing error: {str(e)}")
-            raise Exception(f"Invalid date format in DB: {str(e)}")
+            raise Exception("Invalid token date format in database.")
 
-        # Check if token expires within the next 5 minutes
-        if datetime.now(timezone.utc) + timedelta(minutes=5) > expires_at:
-            print("[Token Check] Token expired or nearly expired. Refreshing...")
+        # 2. Check if token is expired (or expires in the next 10 minutes)
+        if datetime.now(timezone.utc) + timedelta(minutes=10) > expires_at:
+            print("[Token Check] Token expired. Refreshing...")
             
-            client_id = os.getenv("TIKTOK_CLIENT_ID")
-            client_secret = os.getenv("TIKTOK_CLIENT_SECRET")
-            
-            if not client_id or not client_secret:
-                print("[Token Check] Missing TikTok credentials in .env file.")
-                raise Exception("Missing TIKTOK_CLIENT_ID or TIKTOK_CLIENT_SECRET")
-
             url = "https://open.tiktokapis.com/v2/oauth/token/"
             data = {
-                "client_key": client_id,
-                "client_secret": client_secret,
+                "client_key": os.getenv("TIKTOK_CLIENT_ID"),
+                "client_secret": os.getenv("TIKTOK_CLIENT_SECRET"),
                 "grant_type": "refresh_token",
                 "refresh_token": account.get("refresh_token")
             }
@@ -48,28 +38,40 @@ class TikTokService:
             response = requests.post(url, data=data, headers=headers)
             res_json = response.json()
             
-            if "access_token" not in res_json:
-                print(f"[Token Check] Refresh failed: {res_json}")
-                # Capturing the actual error from TikTok response
+            # 3. Handle Refresh Success
+            if "access_token" in res_json:
+                print("[Token Check] Refresh successful. Saving new tokens...")
+                
+                # TikTok often sends a NEW refresh_token. You MUST save it.
+                new_access_token = res_json["access_token"]
+                new_refresh_token = res_json.get("refresh_token", account["refresh_token"])
+                
+                # Calculate new expiry (TikTok access tokens are usually 86400 seconds / 24h)
+                expires_in = res_json.get("expires_in", 86400)
+                new_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+                
+                # 4. Update the database with BOTH new tokens
+                update_payload = {
+                    "access_token": new_access_token,
+                    "refresh_token": new_refresh_token, 
+                    "expires_at": new_expiry.isoformat()
+                }
+                UserManager.update_social_account(user_id, "tiktok", update_payload)
+                
+                return new_access_token
+            else:
+                # 5. Handle Critical Failure (Invalid Grant)
                 error_msg = res_json.get("error_description") or res_json.get("error", "Unknown error")
+                print(f"[Token Check] CRITICAL: Refresh failed. {error_msg}")
+                
+                # If the refresh token itself is dead, we can't do anything but re-link
+                if "invalid_grant" in str(res_json):
+                    print("RE-AUTHENTICATION REQUIRED: The refresh token is dead.")
+                
                 raise Exception(f"TikTok Refresh Failed: {error_msg}")
-
-            print("[Token Check] Refresh successful. Updating database...")
-            
-            expires_in = res_json.get("expires_in", 86400) # Default 24h if missing
-            new_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
-            
-            update_payload = {
-                "access_token": res_json["access_token"],
-                "refresh_token": res_json.get("refresh_token", account["refresh_token"]),
-                "expires_at": new_expiry.isoformat()
-            }
-            UserManager.update_social_account(user_id, "tiktok", update_payload)
-            return res_json["access_token"]
 
         print("[Token Check] Current token is still valid.")
         return account["access_token"]
-
     # @staticmethod
     # async def upload_video(user_id: str, file_path: str, caption: str):
     #     print(f"DEBUG: Starting TikTok Upload...")

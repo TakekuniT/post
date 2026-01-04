@@ -12,7 +12,7 @@ class PublishRequest(BaseModel):
     user_id: str
     video_path: str 
     caption: str
-    title: str
+    description: str
     platforms: list[str]
 
 async def get_local_video(file_name: str) -> str:
@@ -45,7 +45,7 @@ async def publish_video(request: PublishRequest, background_tasks: BackgroundTas
         request.user_id,
         local_path,
         request.caption,
-        request.title,
+        request.description,
         request.platforms
     )
 

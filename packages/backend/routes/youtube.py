@@ -9,7 +9,7 @@ import urllib.parse
 import requests
 import subprocess
 from utils.db_client import UserManager
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 router = APIRouter()
@@ -18,8 +18,14 @@ CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("YOUTUBE_REDIRECT_URI")
 APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
-
+# In your YouTube login route file
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "https://www.googleapis.com/auth/userinfo.email"
+]
 
 @router.get("/")
 def test_youtube():
@@ -79,8 +85,8 @@ async def youtube_callback(code: str, state: str):
         channel_name = channel["snippet"]["title"]
 
         # 2. Calculate expiration timestamp
-        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)).isoformat()
-
+        #expires_at = (datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)).isoformat()
+        expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat()
         # 3. Save to Database
         # Signature: (user_id, platform, access_token, refresh_token, expires_at, platform_user_id)
         UserManager.save_social_account(

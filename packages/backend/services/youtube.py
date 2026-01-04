@@ -40,7 +40,7 @@ class YouTubeService:
         return build("youtube", "v3", credentials=creds)
 
     @staticmethod
-    async def upload_video(user_id: str, file_path: str, title: str, description: str):
+    async def upload_video(user_id: str, file_path: str, caption: str, description: str):
         """
         Highest Quality Engine: Uses the refreshed service and 
         resumable chunks to guarantee bit-perfect uploads.
@@ -61,7 +61,7 @@ class YouTubeService:
                 part="snippet,status",
                 body={
                     "snippet": {
-                        "title": title, 
+                        "title": caption, 
                         "description": description, 
                         "categoryId": "22"
                     },
