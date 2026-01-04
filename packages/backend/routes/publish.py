@@ -10,7 +10,7 @@ router = APIRouter()
 
 class PublishRequest(BaseModel):
     user_id: str
-    video_path: str # In production, this might be a Supabase Storage URL
+    video_path: str 
     caption: str
     title: str
     platforms: list[str]
