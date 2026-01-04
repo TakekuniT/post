@@ -32,7 +32,7 @@ class YouTubeService:
             
             # 3. Save the new access token back to Supabase immediately
             # We use **data to update just the changed fields
-            UserManager.save_social_account(user_id, "youtube", {
+            UserManager.update_social_account(user_id, "youtube", {
                 "access_token": creds.token,
                 "expires_at": creds.expiry.isoformat()
             })

@@ -35,7 +35,7 @@ class FacebookService:
                 raise Exception(f"Facebook Refresh Failed: {res}")
 
             new_expiry = datetime.now(timezone.utc) + timedelta(seconds=res.get("expires_in", 5184000))
-            UserManager.save_social_account(user_id, "facebook", {
+            UserManager.update_social_account(user_id, "facebook", {
                 "access_token": res["access_token"],
                 "expires_at": new_expiry.isoformat()
             })

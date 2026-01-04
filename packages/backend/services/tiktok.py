@@ -64,7 +64,7 @@ class TikTokService:
                 "refresh_token": res_json.get("refresh_token", account["refresh_token"]),
                 "expires_at": new_expiry.isoformat()
             }
-            UserManager.save_social_account(user_id, "tiktok", update_payload)
+            UserManager.update_social_account(user_id, "tiktok", update_payload)
             return res_json["access_token"]
 
         print("[Token Check] Current token is still valid.")
