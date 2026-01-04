@@ -44,7 +44,7 @@ async def facebook_login(user_id: str):
 
 @router.get("/callback")
 async def facebook_callback(request: Request, code: str, state: str):
-    user_id = state  # The 'state' parameter passed during /login
+    user_id = state 
     try:
         # 1. Exchange Code for Short-Lived Access Token
         token_url = "https://graph.facebook.com/v19.0/oauth/access_token"
@@ -60,7 +60,7 @@ async def facebook_callback(request: Request, code: str, state: str):
         if not short_token:
             raise HTTPException(status_code=400, detail=f"Token exchange failed: {res}")
 
-        # 2. Exchange for Long-Lived User Token (valid for ~60 days)
+        # 2. Exchange for Long-Lived User Token (~60 days)
         ll_url = "https://graph.facebook.com/v19.0/oauth/access_token"
         ll_params = {
             "grant_type": "fb_exchange_token",
@@ -71,8 +71,7 @@ async def facebook_callback(request: Request, code: str, state: str):
         ll_res = requests.get(ll_url, params=ll_params).json()
         user_access_token = ll_res.get("access_token")
 
-        # 3. Get the list of Pages and their linked Instagram Business IDs
-        # Page tokens obtained via a Long-Lived User Token do not expire.
+        # 3. Get Pages (and linked IG accounts)
         accounts_url = "https://graph.facebook.com/v19.0/me/accounts"
         accounts_res = requests.get(accounts_url, params={
             "fields": "name,access_token,instagram_business_account",
@@ -81,35 +80,36 @@ async def facebook_callback(request: Request, code: str, state: str):
 
         saved_accounts = []
 
-        # 4. Save to Database
         if "data" in accounts_res:
             for page in accounts_res["data"]:
                 page_id = page.get("id")
                 page_name = page.get("name")
                 page_token = page.get("access_token")
-                
+
                 # A. Save Facebook Page
-                fb_data = {
-                    "access_token": page_token,
-                    "platform_id": page_id,
-                    "name": page_name,
-                    "expires_at": "2099-01-01T00:00:00" # Page tokens are permanent
-                }
-                UserManager.save_social_account(user_id, "facebook", fb_data)
+                # Matches: (user_id, platform, access_token, refresh_token, expires_at, platform_user_id)
+                UserManager.save_social_account(
+                    user_id,
+                    "facebook",
+                    page_token,
+                    None,  # No refresh token for FB
+                    "2099-01-01T00:00:00",
+                    page_id
+                )
                 saved_accounts.append({"type": "facebook", "name": page_name})
 
                 # B. Save Instagram Business Account if linked
                 # ig_business = page.get("instagram_business_account")
                 # if ig_business:
                 #     ig_id = ig_business.get("id")
-                #     ig_data = {
-                #         "access_token": page_token, # IG API uses the linked Page Token
-                #         "instagram_business_id": ig_id,
-                #         "name": f"IG: {page_name}",
-                #         "platform": "instagram",
-                #         "expires_at": "2099-01-01T00:00:00"
-                #     }
-                #     UserManager.save_social_account(user_id, "instagram", ig_data)
+                #     UserManager.save_social_account(
+                #         user_id,
+                #         "instagram",
+                #         page_token, # IG uses the Page Access Token
+                #         None,
+                #         "2099-01-01T00:00:00",
+                #         ig_id
+                #     )
                 #     saved_accounts.append({"type": "instagram", "name": f"IG: {page_name}"})
 
         return {
@@ -120,4 +120,4 @@ async def facebook_callback(request: Request, code: str, state: str):
 
     except Exception as e:
         print(f"Error in FB Callback: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error during authentication.")
+        raise HTTPException(status_code=500, detail=str(e))

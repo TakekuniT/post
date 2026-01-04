@@ -36,12 +36,15 @@ class UserManager:
     #     return None
 
     @staticmethod
-    def save_social_account(user_id: str, platform: str, data: dict):
+    def save_social_account(user_id: str, platform: str, access_token: str, refresh_token: str, expires_at: str, platform_user_id):
         """Saves or updates tokens after a login/refresh."""
         return supabase.table("social_accounts").upsert({
             "user_id": user_id,
             "platform": platform,
-            **data
+            "platform_user_id": platform_user_id,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "expires_at": expires_at,
         }, on_conflict="user_id,platform").execute()
     
 
