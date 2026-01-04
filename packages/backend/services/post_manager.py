@@ -3,6 +3,7 @@ from services.youtube import YouTubeService
 from services.tiktok import TikTokService
 from services.instagram import InstagramService
 from services.facebook import FacebookService
+from services.linkedin import LinkedInService
 
 class PostManager:
     @staticmethod
@@ -24,6 +25,9 @@ class PostManager:
         if "facebook" in platforms:
             tasks.append(FacebookService.upload_video(user_id, file_path, caption))
         
+        if "linkedin" in platforms:
+            tasks.append(LinkedInService.upload_video(user_id, file_path, caption))
+
         # Run all uploads at the same time!
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return results
