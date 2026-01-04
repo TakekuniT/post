@@ -3,13 +3,14 @@ import requests
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from utils.db_client import UserManager
-
+from urllib.parse import urlencode
 router = APIRouter()
 
 # --- CONFIGURATION ---
 CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID")
 CLIENT_SECRET = os.getenv("FACEBOOK_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI")
+APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
 
 # Combined scopes for both Facebook Reels and Instagram Reels
 SCOPES = [
@@ -28,26 +29,23 @@ def test_facebook():
     return {"message": "Facebook route is working"}
 
 @router.get("/login")
-async def facebook_login():
-    """
-    Step 1: Redirect the user to the Facebook Login Dialog.
-    """
-    scope_str = ",".join(SCOPES)
-    auth_url = (
-        f"https://www.facebook.com/v19.0/dialog/oauth?"
-        f"client_id={CLIENT_ID}&"
-        f"redirect_uri={REDIRECT_URI}&"
-        f"scope={scope_str}&"
-        f"response_type=code"
-    )
-    return RedirectResponse(auth_url)
+async def facebook_login(user_id: str):
+    auth_url = "https://www.facebook.com/v19.0/dialog/oauth"
+
+    params = {
+        "client_id": CLIENT_ID,
+        "redirect_uri": REDIRECT_URI,
+        "scope": ",".join(SCOPES),
+        "response_type": "code",
+        "state": user_id,  
+    }
+
+    return RedirectResponse(url=f"{auth_url}?{urlencode(params)}")
+    
 
 @router.get("/callback")
-async def facebook_callback(request: Request, code: str):
-    """
-    Step 2: Handle the callback, exchange code for tokens, 
-    and link Page/Instagram accounts.
-    """
+async def facebook_callback(request: Request, code: str, state: str):
+    user_id = state 
     try:
         # 1. Exchange Code for Short-Lived Access Token
         token_url = "https://graph.facebook.com/v19.0/oauth/access_token"
@@ -63,7 +61,7 @@ async def facebook_callback(request: Request, code: str):
         if not short_token:
             raise HTTPException(status_code=400, detail=f"Token exchange failed: {res}")
 
-        # 2. Exchange for Long-Lived User Token (60 days)
+        # 2. Exchange for Long-Lived User Token (~60 days)
         ll_url = "https://graph.facebook.com/v19.0/oauth/access_token"
         ll_params = {
             "grant_type": "fb_exchange_token",
@@ -72,72 +70,56 @@ async def facebook_callback(request: Request, code: str):
             "fb_exchange_token": short_token
         }
         ll_res = requests.get(ll_url, params=ll_params).json()
-        user_access_token = ll_res["access_token"]
+        user_access_token = ll_res.get("access_token")
 
-        # 3. Get the list of Pages and their linked Instagram Business IDs
-        # We need the Page Access Token to post Reels to Facebook
+        # 3. Get Pages (and linked IG accounts)
         accounts_url = "https://graph.facebook.com/v19.0/me/accounts"
         accounts_res = requests.get(accounts_url, params={
             "fields": "name,access_token,instagram_business_account",
             "access_token": user_access_token
         }).json()
 
-        # # 4. Save each Page and its associated Instagram account
-        # for page in accounts_res.get("data", []):
-        #     # Save Facebook Page Account
-        #     UserManager.save_social_account(user_id, "facebook", {
-        #         "access_token": page["access_token"], # Page Token never expires if user token is LL
-        #         "page_id": page["id"],
-        #         "name": page["name"],
-        #         "expires_at": "2099-01-01T00:00:00" # Page tokens are essentially permanent
-        #     })
-            
-        #     # Save Instagram Account if linked to this page
-        #     if "instagram_business_account" in page:
-        #         ig_id = page["instagram_business_account"]["id"]
-        #         UserManager.save_social_account(user_id, "instagram", {
-        #             "access_token": page["access_token"], # Instagram uses the Page Token
-        #             "instagram_business_id": ig_id,
-        #             "name": f"IG: {page['name']}",
-        #             "expires_at": "2099-01-01T00:00:00"
-        #         })
-        pages_list = []
+        saved_accounts = []
 
         if "data" in accounts_res:
             for page in accounts_res["data"]:
-                # Extract the key info for each page
-                page_info = {
-                    "facebook_id": page.get("id"),
-                    "access_token": page.get("access_token"),
-                    "name": page.get("name"),
-                    # Include IG ID if it exists
-                    # "instagram_business_id": page.get("instagram_business_account", {}).get("id")
-                }
-                pages_list.append(page_info)
-        print(f"DEBUG: accounts: {accounts_res}")
-        """
-            account_res: {
-                "data": [
-                    {
-                        "name": facebook-page-name,
-                        "instagram_business_account": {
-                            "id": ig-business-account-id
-                        },
-                        "id": facebook-page-id,
-                        "access_token": access-token
-                    }
-                ],
-                "paging": {
-                    "cursors": {
-                        "before": before-cursor,
-                        "after": after-cursor
-                    }
-                }
-            }
-        """
-        return {
-            "status": "success",
-            "token_data": pages_list 
-        }
+                page_id = page.get("id")
+                page_name = page.get("name")
+                page_token = page.get("access_token")
+
+                # A. Save Facebook Page
+                # Matches: (user_id, platform, access_token, refresh_token, expires_at, platform_user_id)
+                UserManager.save_social_account(
+                    user_id,
+                    "facebook",
+                    page_token,
+                    None,  # No refresh token for FB
+                    "2099-01-01T00:00:00",
+                    page_id
+                )
+                saved_accounts.append({"type": "facebook", "name": page_name})
+
+                # B. Save Instagram Business Account if linked
+                # ig_business = page.get("instagram_business_account")
+                # if ig_business:
+                #     ig_id = ig_business.get("id")
+                #     UserManager.save_social_account(
+                #         user_id,
+                #         "instagram",
+                #         page_token, # IG uses the Page Access Token
+                #         None,
+                #         "2099-01-01T00:00:00",
+                #         ig_id
+                #     )
+                #     saved_accounts.append({"type": "instagram", "name": f"IG: {page_name}"})
+
+        # return {
+        #     "status": "success",
+        #     "message": f"Successfully connected {len(saved_accounts)} accounts",
+        #     "accounts": saved_accounts
+        # }
+        return RedirectResponse(f"{APP_REDIRECT_URI}?platform=facebook")
+
     except Exception as e:
+        print(f"Error in FB Callback: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
