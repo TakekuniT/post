@@ -3,7 +3,7 @@ import requests
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from utils.db_client import UserManager
-
+from urllib.parse import urlencode
 router = APIRouter()
 
 # --- CONFIGURATION ---
