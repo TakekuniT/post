@@ -10,6 +10,8 @@ from utils.db_client import UserManager
 router = APIRouter()
 oauth = OAuthManager()
 
+APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
+
 
 @router.get("/")
 def test_tiktok():
@@ -67,11 +69,12 @@ async def tiktok_callback(code: str, state: str):
             token_data.get("open_id") # This is the TikTok unique User ID
         )
 
-        return {
-            "status": "success", 
-            "message": "TikTok account connected successfully",
-            "tiktok_user_id": token_data.get("open_id")
-        }
+        # return {
+        #     "status": "success", 
+        #     "message": "TikTok account connected successfully",
+        #     "tiktok_user_id": token_data.get("open_id")
+        # }
+        return RedirectResponse(f"{APP_REDIRECT_URI}?platform=tiktok")
 
     except Exception as e:
         print(f"ERROR in TikTok Callback: {e}")

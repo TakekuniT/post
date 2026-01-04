@@ -18,10 +18,11 @@ router = APIRouter()
 BASE_URL = "https://youlanda-migratory-trevor.ngrok-free.dev"
 # BASE_URL = "https://xpost-dev-taki.loca.lt"
 
-
 CLIENT_ID = os.environ.get("INSTAGRAM_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("INSTAGRAM_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("INSTAGRAM_REDIRECT_URI")
+APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
+
 
 SCOPES = [
     "instagram_basic",             # This is still the standard for FB-connected accounts
@@ -140,11 +141,12 @@ async def instagram_callback(code: str = None, state: str = None):
                 "message": "No Instagram Business accounts found linked to your Pages."
             }
 
-        return {
-            "status": "success",
-            "message": f"Successfully connected {len(saved_accounts)} Instagram accounts",
-            "accounts": saved_accounts
-        }
+        # return {
+        #     "status": "success",
+        #     "message": f"Successfully connected {len(saved_accounts)} Instagram accounts",
+        #     "accounts": saved_accounts
+        # }
+        return RedirectResponse(f"{APP_REDIRECT_URI}?platform=instagram")
 
     except Exception as e:
         print(f"ERROR in IG Callback: {e}")

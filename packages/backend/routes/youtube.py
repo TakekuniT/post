@@ -16,6 +16,7 @@ router = APIRouter()
 CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("YOUTUBE_REDIRECT_URI")
+APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 
@@ -90,11 +91,12 @@ async def youtube_callback(code: str, state: str):
             channel_id
         )
 
-        return {
-            "status": "success", 
-            "message": f"Connected YouTube channel: {channel_name}",
-            "channel_id": channel_id
-        }
+        # return {
+        #     "status": "success", 
+        #     "message": f"Connected YouTube channel: {channel_name}",
+        #     "channel_id": channel_id
+        # }
+        return RedirectResponse(f"{APP_REDIRECT_URI}?platform=youtube")
 
     except Exception as e:
         print(f"ERROR in YouTube Callback: {e}")
