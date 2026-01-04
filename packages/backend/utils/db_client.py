@@ -59,3 +59,35 @@ class UserManager:
             .eq("platform", platform)
             .execute()
         )
+    
+    @staticmethod
+    def delete_social_account(user_id: str, platform: str):
+        """Deletes a social account and returns True if successful."""
+        try:
+            # We use .execute() and check if it actually removed something
+            response = supabase.table("social_accounts") \
+                .delete() \
+                .eq("user_id", user_id) \
+                .eq("platform", platform) \
+                .execute()
+            
+            # If the response data is empty, it means nothing was deleted (already gone)
+            return len(response.data) > 0
+        except Exception as e:
+            print(f"Database Delete Failed: {str(e)}")
+            return False
+
+    @staticmethod
+    def get_all_user_accounts(user_id: str):
+        """Returns a clean list of account dictionaries."""
+        try:
+            response = supabase.table("social_accounts") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .execute()
+            
+            # Return the raw list of dictionaries (data)
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Database Query Failed: {str(e)}")
+            return []

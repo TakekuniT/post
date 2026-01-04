@@ -5,11 +5,12 @@
 //  Created by Takekuni Tanemori on 1/3/26.
 //
 import SwiftUI
-import AuthenticationServices // Required for web login
+import AuthenticationServices 
 
 struct AccountView: View {
     @State private var userEmail: String = "Loading..."
     @State private var userId: String = ""
+    @State private var connectedPlatforms: Set<String> = []
     @State private var authSession: ASWebAuthenticationSession?
     @State private var authPresenter = WebAuthPresenter()
     
@@ -44,28 +45,12 @@ struct AccountView: View {
                 }
                 
                 Section("Social Accounts") {
-                    Button("Connect TikTok") {
-                        print("trying to connect to tiktok")
-                        startSocialLogin(platform: "tiktok")
+                        platformRow(name: "TikTok", id: "tiktok")
+                        platformRow(name: "Instagram", id: "instagram")
+                        platformRow(name: "YouTube", id: "youtube")
+                        platformRow(name: "Facebook", id: "facebook")
+                        platformRow(name: "LinkedIn", id: "linkedin")
                     }
-                    Button("Connect Instagram") {
-                        print("trying to connect to instagram")
-                        startSocialLogin(platform: "instagram")
-                    }
-                    Button("Connect YouTube") {
-                        print("trying to connect to youtube")
-                        startSocialLogin(platform: "youtube")
-                    }
-                    Button("Connect Facebook") {
-                        print("trying to connect to facebook")
-                        startSocialLogin(platform: "facebook")
-                    }
-                    Button("Connect LinkedIn") {
-                        print("trying to connect to linkedin")
-                        startSocialLogin(platform: "linkedin")
-                    }
-                }
-                
                 Section {
                     Button("Sign Out", role: .destructive) {
                         signOut()
@@ -75,23 +60,59 @@ struct AccountView: View {
             .navigationTitle("Account")
             .task {
                 await fetchUserData()
+                await checkConnections()
             }
         }
     }
     
-//    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-//        guard
-//            let scene = UIApplication.shared.connectedScenes
-//                .compactMap({ $0 as? UIWindowScene })
-//                .first,
-//            let window = scene.windows.first(where: { $0.isKeyWindow })
-//        else {
-//            return ASPresentationAnchor()
-//        }
-//        
-//        return window
-//    }
+    @ViewBuilder
+    func platformRow(name: String, id: String) -> some View {
+        HStack {
+            Text(name)
+            Spacer()
+            if connectedPlatforms.contains(id) {
+                Button("Disconnect") {
+                    disconnectPlatform(id)
+                }
+                .foregroundColor(.red)
+            } else {
+                Button("Connect") {
+                    startSocialLogin(platform: id)
+                }
+                .foregroundColor(.blue)
+            }
+        }
+    }
     
+    func checkConnections() async {
+        guard let url = URL(string: "\(backendBaseUrl)/accounts/\(userId)") else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let list = try? JSONDecoder().decode([String].self, from: data) {
+                DispatchQueue.main.async {
+                    self.connectedPlatforms = Set(list)
+                }
+            }
+        } catch {
+            print("Failed to fetch connections")
+        }
+    }
+    
+    
+    func disconnectPlatform(_ platform: String) {
+        guard let url = URL(string: "\(backendBaseUrl)/disconnect/\(platform)?user_id=\(userId)") else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        
+        URLSession.shared.dataTask(with: request) { _, response, _ in
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                DispatchQueue.main.async {
+                    self.connectedPlatforms.remove(platform)
+                }
+            }
+        }.resume()
+    }
     
     func fetchUserData() async {
         if let session = try? await supabase.auth.session {

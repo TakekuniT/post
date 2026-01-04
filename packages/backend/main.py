@@ -2,13 +2,13 @@ import os
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 
-
+from utils.db_client import UserManager
 
 
 
 load_dotenv()
 
-from fastapi import FastAPI, APIRouter, Request
+from fastapi import FastAPI, APIRouter, Request, HTTPException
 from routes import instagram, youtube, tiktok, facebook, publish, linkedin
 
 app = FastAPI()
@@ -44,3 +44,19 @@ app.include_router(publish.router, prefix="/publish")
 @app.get("/")
 def read_root():
     return {"message": "xPost FastAPI backend running"}
+
+@app.delete("/disconnect/{platform}")
+async def disconnect(platform: str, user_id: str):
+    try:
+        success = UserManager.delete_social_account(user_id, platform)
+        if success:
+            return {"status": "success", "message": f"Successfully disconnected {platform}"}
+        else:
+            raise HTTPException(status_code=404, detail="No account found for this user.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/accounts/{user_id}")
+async def get_connected_accounts(user_id: str):
+    accounts = UserManager.get_all_user_accounts(user_id)
+    return [acc["platform"] for acc in accounts]
