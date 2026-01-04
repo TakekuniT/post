@@ -39,7 +39,7 @@ class LinkedInService:
                 raise Exception(f"LinkedIn Refresh Failed: {res}")
 
             new_expiry = datetime.now(timezone.utc) + timedelta(seconds=res.get("expires_in", 5184000))
-            UserManager.save_social_account(user_id, "linkedin", {
+            UserManager.update_social_account(user_id, "linkedin", {
                 "access_token": res["access_token"],
                 "refresh_token": res.get("refresh_token"), # May be a new one
                 "expires_at": new_expiry.isoformat()

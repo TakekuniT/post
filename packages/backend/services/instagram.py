@@ -45,7 +45,7 @@ class InstagramService:
                 "access_token": response["access_token"],
                 "expires_at": new_expiry.isoformat()
             }
-            UserManager.save_social_account(user_id, "instagram", update_data)
+            UserManager.update_social_account(user_id, "instagram", update_data)
             
             return response["access_token"], account["platform_user_id"]
 

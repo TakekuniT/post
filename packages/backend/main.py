@@ -36,7 +36,9 @@ app.include_router(instagram.router, prefix="/instagram")
 app.include_router(youtube.router, prefix="/youtube")
 app.include_router(tiktok.router, prefix="/tiktok")
 app.include_router(facebook.router, prefix="/facebook")
+app.include_router(publish.router, prefix="/linkedin")
 app.include_router(publish.router, prefix="/publish")
+
 
 
 @app.get("/")
