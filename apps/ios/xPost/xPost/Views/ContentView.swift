@@ -9,7 +9,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             if isAuthenticated {
-                MainDashboardView()
+                MainTabView()
             } else {
                 NavigationStack {
                     LoginView(isAuthenticated: $isAuthenticated)

@@ -13,7 +13,11 @@ class AuthService: ObservableObject {
     
     // Sign up a new user
     func signUp(email: String, pass: String) async throws {
-        try await supabase.auth.signUp(email: email, password: pass)
+        try await supabase.auth.signUp(
+            email: email,
+            password: pass,
+            redirectTo: URL(string: "xpost://login-callback")
+        )
     }
     
     // Sign in an existing user
