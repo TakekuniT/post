@@ -7,14 +7,14 @@ from services.linkedin import LinkedInService
 
 class PostManager:
     @staticmethod
-    async def distribute_video(user_id: str, file_path: str, caption: str, title: str, platforms: list):
+    async def distribute_video(user_id: str, file_path: str, caption: str, description: str, platforms: list):
         """
         Coordinates multi-platform uploads.
         """
         tasks = []
         
         if "youtube" in platforms:
-            tasks.append(YouTubeService.upload_video(user_id, file_path, caption, title))
+            tasks.append(YouTubeService.upload_video(user_id, file_path, caption, description))
             
         if "tiktok" in platforms:
             tasks.append(TikTokService.upload_video(user_id, file_path, caption))
