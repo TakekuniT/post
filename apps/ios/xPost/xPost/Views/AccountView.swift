@@ -60,6 +60,10 @@ struct AccountView: View {
                         print("trying to connect to facebook")
                         startSocialLogin(platform: "facebook")
                     }
+                    Button("Connect LinkedIn") {
+                        print("trying to connect to linkedin")
+                        startSocialLogin(platform: "linkedin")
+                    }
                 }
                 
                 Section {

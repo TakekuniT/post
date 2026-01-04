@@ -20,7 +20,7 @@ struct CreatePostView: View {
     @State private var selectedItem: PhotosPickerItem?
     @State private var isUploading = false
     
-    let platforms = ["youtube", "instagram", "tiktok", "facebook"]
+    let platforms = ["youtube", "instagram", "tiktok", "facebook", "linkedin"]
     let apiService = APIService()
 
     var body: some View {
