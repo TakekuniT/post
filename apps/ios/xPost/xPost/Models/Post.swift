@@ -11,7 +11,7 @@ import Foundation
 struct Post: Codable {
     var user_id: String
     var caption: String
-    var title: String // for youtube
+    var description: String // for youtube
     var video_path: String
     var platforms: [String] // e.g., ["facebook", "instagram"]
 }

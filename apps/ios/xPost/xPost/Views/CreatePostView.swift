@@ -12,7 +12,7 @@ struct CreatePostView: View {
     @Environment(\.dismiss) var dismiss
     
     // Form Data
-    @State private var title = ""
+    @State private var description = ""
     @State private var caption = ""
     @State private var selectedPlatforms: Set<String> = []
     
@@ -34,14 +34,21 @@ struct CreatePostView: View {
                 }
                 
                 Section("Post Details") {
-                    TextField("Title (YouTube only)", text: $title)
                     TextEditor(text: $caption)
-                        .frame(height: 100)
+                        .frame(height: 50)
                         .overlay(alignment: .topLeading) {
                             if caption.isEmpty {
                                 Text("Enter caption...").foregroundColor(.gray).padding(7)
                             }
                         }
+                    TextEditor(text: $description)
+                        .frame(height: 50)
+                        .overlay(alignment: .topLeading) {
+                            if caption.isEmpty {
+                                Text("Enter description (YouTube only) ...").foregroundColor(.gray).padding(7)
+                            }
+                        }
+//                    TextField("Enter description (YouTube only)", text: $description)
                 }
                 
                 Section("Publish To") {
@@ -105,7 +112,7 @@ struct CreatePostView: View {
                 let newPost = Post(
                     user_id: currentUserId,
                     caption: caption,
-                    title: title,
+                    description: description,
                     video_path: videoPath,
                     platforms: Array(selectedPlatforms)
                 )
