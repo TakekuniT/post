@@ -1,5 +1,5 @@
 import shutil
-from fastapi import APIRouter, UploadFile, Form, File
+from fastapi import APIRouter, UploadFile, Form, File, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
@@ -8,6 +8,7 @@ import os
 import urllib.parse
 import requests
 import subprocess
+from utils.db_client import UserManager
 
 
 router = APIRouter()
@@ -17,28 +18,28 @@ CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("YOUTUBE_REDIRECT_URI")
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
+
 @router.get("/")
 def test_youtube():
     return {"message": "Youtube route is working"}
 
 @router.get("/login")
-def youtube_login():
+def youtube_login(user_id: str):
     auth_params = {
         "client_id": CLIENT_ID,
         "redirect_uri": REDIRECT_URI,
         "scope": " ".join(SCOPES),
         "response_type": "code",
-        "access_type": "offline",
-        "prompt": "consent"
+        "access_type": "offline", # Crucial for refresh_token
+        "prompt": "consent",      # Ensures refresh_token is sent every time
+        "state": user_id          # Pass user_id to callback
     }
-    print(auth_params)
-    auth_params["scope"] = "%20".join(SCOPES)
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(auth_params)
     return RedirectResponse(auth_url)
 
 @router.get("/callback")
-def youtube_callback(code: str):
-    # Exchanges authorization code for access token
+async def youtube_callback(code: str, state: str):
+    user_id = state
     token_url = "https://oauth2.googleapis.com/token"
     data = {
         "code": code,
@@ -50,22 +51,54 @@ def youtube_callback(code: str):
 
     response = requests.post(token_url, data=data)
     if response.status_code != 200:
-        return {"error": response.json()}
+        raise HTTPException(status_code=400, detail=response.json())
     
     tokens = response.json()
-    """
-        tokens: {
-            "access_token": access-token,
-            "expires_in": expires-in-seconds,
-            "refresh_token": refresh-token,
-            "scope": scope,
-            "token_type": token-type
+    access_token = tokens.get("access_token")
+    refresh_token = tokens.get("refresh_token") # Will be present due to 'offline' access
+    expires_in = tokens.get("expires_in", 3600)
+
+    try:
+        # 1. Use the access_token to get the YouTube Channel ID
+        creds = Credentials(token=access_token)
+        youtube = build("youtube", "v3", credentials=creds)
+        
+        # Request the 'mine' channel
+        channels_res = youtube.channels().list(
+            part="id,snippet",
+            mine=True
+        ).execute()
+
+        if not channels_res.get("items"):
+            raise HTTPException(status_code=404, detail="No YouTube channel found for this account.")
+
+        channel = channels_res["items"][0]
+        channel_id = channel["id"]
+        channel_name = channel["snippet"]["title"]
+
+        # 2. Calculate expiration timestamp
+        expires_at = (datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)).isoformat()
+
+        # 3. Save to Database
+        # Signature: (user_id, platform, access_token, refresh_token, expires_at, platform_user_id)
+        UserManager.save_social_account(
+            user_id,
+            "youtube",
+            access_token,
+            refresh_token,
+            expires_at,
+            channel_id
+        )
+
+        return {
+            "status": "success", 
+            "message": f"Connected YouTube channel: {channel_name}",
+            "channel_id": channel_id
         }
 
-        use access_token to retrieve channel id
-    """
-    return {"status": "success", "token_data": tokens}
-
+    except Exception as e:
+        print(f"ERROR in YouTube Callback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
