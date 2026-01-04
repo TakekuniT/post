@@ -10,6 +10,7 @@ router = APIRouter()
 CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID")
 CLIENT_SECRET = os.getenv("FACEBOOK_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI")
+APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
 
 # Combined scopes for both Facebook Reels and Instagram Reels
 SCOPES = [
@@ -112,11 +113,12 @@ async def facebook_callback(request: Request, code: str, state: str):
                 #     )
                 #     saved_accounts.append({"type": "instagram", "name": f"IG: {page_name}"})
 
-        return {
-            "status": "success",
-            "message": f"Successfully connected {len(saved_accounts)} accounts",
-            "accounts": saved_accounts
-        }
+        # return {
+        #     "status": "success",
+        #     "message": f"Successfully connected {len(saved_accounts)} accounts",
+        #     "accounts": saved_accounts
+        # }
+        return RedirectResponse(f"{APP_REDIRECT_URI}?platform=facebook")
 
     except Exception as e:
         print(f"Error in FB Callback: {str(e)}")
