@@ -74,23 +74,38 @@ struct CreatePostView: View {
                         }
                         
                         
-                        SectionHeader(title: "Timing", icon: "calendar.badge.clock")
-                        VStack {
-                            Toggle("Schedule for later", isOn: $isScheduled.animation(.spring()))
+                        
+                        
+                        
+                        SectionHeader(title: "Schedule", icon: "calendar.badge.clock")
+
+                        VStack(spacing: 12) {
+                            Toggle("Schedule Post", isOn: $isScheduled.animation(.spring()))
                                 .tint(.brandPurple)
                                 .font(.system(.headline, design: .rounded))
                             
                             if isScheduled {
-                                DatePicker("Post at", selection: $scheduleDate, in: Date()...)
-                                    .datePickerStyle(.graphical)
-                                    .tint(.brandPurple)
-                                    .transition(.move(edge: .top).combined(with: .opacity))
+                                DatePicker(
+                                    "Select Time",
+                                    selection: $scheduleDate,
+                                    in: Date()..., // Prevents selecting past dates
+                                    displayedComponents: [.date, .hourAndMinute]
+                                )
+                                .datePickerStyle(.compact)
+                                .tint(.brandPurple)
+                                .transition(.move(edge: .top).combined(with: .opacity))
                             }
                         }
                         .padding()
                         .background(.ultraThinMaterial)
                         .cornerRadius(16)
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.brandPurple.opacity(0.2), lineWidth: 1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.brandPurple.opacity(0.4), lineWidth: 1.5)
+                        )
+                        
+                        
+                        
                         
 
                         SectionHeader(title: "Publish To", icon: "paperplane.fill")
