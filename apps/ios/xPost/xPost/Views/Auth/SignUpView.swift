@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SignUpView: View {
     @State private var email = ""
+    @State private var username = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var errorMessage = ""
@@ -21,6 +22,12 @@ struct SignUpView: View {
                 .font(.largeTitle).bold()
             
             VStack(spacing: 15) {
+                // 2. Added the Username TextField
+                TextField("Username", text: $username)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
                 TextField("Email", text: $email)
                     .textFieldStyle(.roundedBorder)
                     .textInputAutocapitalization(.never)
@@ -50,7 +57,8 @@ struct SignUpView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(isLoading || email.isEmpty || password.isEmpty)
+            // 3. Updated disabled logic to include username
+            .disabled(isLoading || email.isEmpty || password.isEmpty || username.isEmpty)
             .padding(.horizontal)
             
             Spacer()
@@ -59,9 +67,14 @@ struct SignUpView: View {
     }
     
     func handleSignUp() {
-        // Basic validation
         guard password == confirmPassword else {
             errorMessage = "Passwords do not match"
+            return
+        }
+        
+        // Ensure username isn't empty
+        guard !username.isEmpty else {
+            errorMessage = "Please choose a username"
             return
         }
         
@@ -69,10 +82,14 @@ struct SignUpView: View {
             isLoading = true
             errorMessage = ""
             do {
-                try await AuthService.shared.signUp(email: email, pass: password)
-                // Supabase sends a confirmation email by default.
-                // Once confirmed, the auth listener in ContentView will trigger.
-                print("Sign up successful! Check your email for confirmation.")
+                // Pass the username here
+                try await AuthService.shared.signUp(
+                    email: email,
+                    pass: password,
+                    username: username
+                )
+                
+                print("Sign up successful!")
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription
@@ -80,4 +97,6 @@ struct SignUpView: View {
             isLoading = false
         }
     }
+    
+    
 }

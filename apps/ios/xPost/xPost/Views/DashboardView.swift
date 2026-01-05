@@ -12,8 +12,8 @@ import SwiftUI
 import Supabase
 
 struct MainDashboardView: View {
-    @State private var userName: String = "User"
     @State private var isLoading = false
+    @State private var profile: UserProfile?
     
     var body: some View {
         NavigationStack {
@@ -31,11 +31,30 @@ struct MainDashboardView: View {
                             Text("Welcome back,")
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundColor(.secondary)
-                            Text(userName.split(separator: "@").first?.capitalized ?? "User")
-                                .font(.system(.title, design: .rounded, weight: .bold))
+                            
+                            // Check if profile exists, otherwise show a placeholder
+                            if let profile = profile {
+                                Text("@\(profile.username)")
+                                    .font(.system(.title, design: .rounded, weight: .bold))
+                            } else {
+                                // Redacted style or ProgressView for better UX
+                                Text("Loading...")
+                                    .font(.system(.title, design: .rounded, weight: .bold))
+                                    .redacted(reason: .placeholder)
+                            }
                         }
                         
                         Spacer()
+
+                        if profile?.tier == "pro" {
+                            Text("PRO")
+                                .font(.system(size: 10, weight: .black))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.brandPurple)
+                                .foregroundColor(.white)
+                                .cornerRadius(5)
+                        }
                         
                         // Profile Avatar with Gradient
                         ZStack {
@@ -131,8 +150,23 @@ struct MainDashboardView: View {
     }
 
     func fetchUserData() async {
-        if let user = try? await supabase.auth.session.user {
-            self.userName = user.email ?? "User"
+        do {
+            // 1. Get the current logged-in user ID
+            let currentUser = try await supabase.auth.session.user
+            
+            // 2. Fetch the row from the 'profiles' table
+            // We use .single() to tell Supabase we expect one object, not an array
+            let fetchedProfile: UserProfile = try await supabase
+                .from("profiles")
+                .select()
+                .eq("id", value: currentUser.id) // Added the 'value:' label
+                .single()
+                .execute()
+                .value
+                
+            self.profile = fetchedProfile
+        } catch {
+            print("Error fetching profile: \(error)")
         }
     }
 }
