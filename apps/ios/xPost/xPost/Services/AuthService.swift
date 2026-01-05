@@ -32,8 +32,22 @@ class AuthService: ObservableObject {
     }
     
     // Request a password reset email
+//    func resetPassword(email: String) async throws {
+//        try await supabase.auth.resetPasswordForEmail(email)
+//    }
+    
     func resetPassword(email: String) async throws {
-        try await supabase.auth.resetPasswordForEmail(email)
+        try await supabase.auth.resetPasswordForEmail(
+            email,
+            redirectTo: URL(string: "xpost://reset-password")
+        )
+    }
+  
+    
+    // MARK: - Update Password (Step 2: Save New Password)
+    func updatePassword(new: String) async throws {
+        let attributes = UserAttributes(password: new)
+        try await supabase.auth.update(user: attributes)
     }
    
 }
