@@ -289,7 +289,7 @@ struct SocialConnectView: View {
                                     .frame(width: 100, height: 100)
                                     .blur(radius: 20)
                                 
-                                Image(systemName: " person.2.badge.key.fill")
+                                Image(systemName: "link.badge.plus")
                                     .font(.system(size: 44, weight: .light))
                                     .foregroundStyle(Color.brandPurple.gradient)
                                     .symbolEffect(.bounce, value: bounceTrigger)
