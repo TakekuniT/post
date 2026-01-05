@@ -16,3 +16,18 @@ struct Post: Codable {
     var platforms: [String]
     var scheduled_at: Date?
 }
+
+struct PostModel: Identifiable, Codable {
+    // This allows ForEach to track your posts using the database ID
+    let id: Int64
+    let created_at: Date
+    let scheduled_at: Date?
+    let status: String
+    let caption: String?
+    let video_path: String
+    let platforms: [String]
+    let description: String?
+    let user_id: UUID
+}
+
+

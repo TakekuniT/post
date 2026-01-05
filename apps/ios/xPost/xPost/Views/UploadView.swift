@@ -11,6 +11,52 @@ struct UploadView: View {
     @State private var showCreateSheet = false
     @State private var animateItems = false
     @State private var bounceTrigger = 0
+    @State private var animationPhase: Int = 0
+    
+    
+    func startAnimations() {
+        animationPhase = 0
+        animateItems = false
+        withAnimation(.easeOut(duration: 0.6)) {
+            animationPhase = 1
+            animateItems = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.easeOut(duration: 0.6)) {
+                animationPhase = 2
+            }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeOut(duration: 0.6)) {
+                animationPhase = 3
+            }
+        }
+    }
+
+    
+    
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Upload")
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+           
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
+        .padding(.top, 24)
+        .opacity(animationPhase >= 1 ? 1 : 0)
+        .offset(y: animationPhase >= 1 ? 0 : 20)
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .foregroundColor(.secondary)
+            .tracking(1.2)
+            .padding(.horizontal, 24)
+    }
     
     var body: some View {
         NavigationStack {
@@ -21,36 +67,42 @@ struct UploadView: View {
                     .ignoresSafeArea()
 
                 ScrollView {
+                    
+                    
+                    
+                    
+                    
+                    
                     VStack(spacing: 25) {
-                        // Header Illustration
-                        ZStack {
-                            Circle()
-                                .fill(Color.brandPurple.opacity(0.1))
-                                .frame(width: 160, height: 160)
+                        headerSection
                             
-                            Image(systemName: "plus.viewfinder")
-                                .font(.system(size: 70, weight: .thin))
-                                .foregroundColor(.brandPurple)
-                                .symbolEffect(.bounce, value: bounceTrigger)
+                        // Illustration Section (Phase 2)
+                        VStack(spacing: 25) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.brandPurple.opacity(0.1))
+                                    .frame(width: 160, height: 160)
+                                Image(systemName: "plus.viewfinder")
+                                    .font(.system(size: 70, weight: .thin))
+                                    .foregroundColor(.brandPurple)
+                                    .symbolEffect(.bounce, value: bounceTrigger)
+                            }
+                                
+                            VStack(spacing: 8) {
+                                Text("Ready to share?")
+                                    .font(.system(.title, design: .rounded, weight: .bold))
+                                Text("Choose your content type and reach all your platforms at once.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                            }
                         }
-                        .padding(.top, 40)
-                        
-                        VStack(spacing: 8) {
-                            Text("Ready to share?")
-                                .font(.system(.title, design: .rounded, weight: .bold))
-                            
-                            Text("Choose your content type and reach all your platforms at once.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 40)
-                        }
-                        .opacity(animateItems ? 1 : 0)
-                        .offset(y: animateItems ? 0 : 10)
+                        .opacity(animationPhase >= 2 ? 1 : 0)
+                        .offset(y: animationPhase >= 2 ? 0 : 20)
 
-                        // Action Cards
+                        // Action Cards (Phase 3)
                         VStack(spacing: 16) {
-                            // Video (Active)
                             uploadActionCard(
                                 title: "Video Post",
                                 subtitle: "Share Reels, Shorts, or TikToks",
@@ -87,21 +139,103 @@ struct UploadView: View {
                             }
                         }
                         .padding(.horizontal, 20)
+                        .opacity(animationPhase >= 3 ? 1 : 0)
+                        .offset(y: animationPhase >= 3 ? 0 : 20)
+                        
                     }
+                    
+                    
+                    
+                    
+                    
+//                    VStack(spacing: 25) {
+//                        headerSection
+//                        // Header Illustration
+//                        
+//                        ZStack {
+//                            Circle()
+//                                .fill(Color.brandPurple.opacity(0.1))
+//                                .frame(width: 160, height: 160)
+//                            
+//                            Image(systemName: "plus.viewfinder")
+//                                .font(.system(size: 70, weight: .thin))
+//                                .foregroundColor(.brandPurple)
+//                                .symbolEffect(.bounce, value: bounceTrigger)
+//                        }
+//                        .padding(.top, 40)
+//                        
+//                        VStack(spacing: 8) {
+//                            Text("Ready to share?")
+//                                .font(.system(.title, design: .rounded, weight: .bold))
+//                            
+//                            Text("Choose your content type and reach all your platforms at once.")
+//                                .font(.subheadline)
+//                                .foregroundColor(.secondary)
+//                                .multilineTextAlignment(.center)
+//                                .padding(.horizontal, 40)
+//                        }
+//                        .opacity(animateItems ? 1 : 0)
+//                        .offset(y: animateItems ? 0 : 10)
+//
+//                        // Action Cards
+//                        VStack(spacing: 16) {
+//                            // Video (Active)
+//                            uploadActionCard(
+//                                title: "Video Post",
+//                                subtitle: "Share Reels, Shorts, or TikToks",
+//                                icon: "video.fill",
+//                                color: .brandPurple,
+//                                delay: 0.1
+//                            ) {
+//                                Haptics.selection()
+//                                showCreateSheet = true
+//                            }
+//                            
+//                            // Picture (Placeholder)
+//                            uploadActionCard(
+//                                title: "Image Gallery",
+//                                subtitle: "Post photos and carousels",
+//                                icon: "photo.on.rectangle.angled",
+//                                color: .brandPurple.opacity(0.7),
+//                                delay: 0.2
+//                            ) {
+//                                Haptics.selection()
+//                                // Logic for pictures coming soon
+//                            }
+//                            
+//                            // Text (Placeholder)
+//                            uploadActionCard(
+//                                title: "Thought / Update",
+//                                subtitle: "Share a text-only update",
+//                                icon: "text.quote",
+//                                color: .brandPurple.opacity(0.5),
+//                                delay: 0.3
+//                            ) {
+//                                Haptics.selection()
+//                                // Logic for text coming soon
+//                            }
+//                        }
+//                        .padding(.horizontal, 20)
+//                    }
+                    
+                    
                 }
             }
-            .navigationTitle("Upload")
+            //.navigationTitle("Upload")
             .sheet(isPresented: $showCreateSheet) {
                 CreatePostView()
             }
             .onAppear {
+                startAnimations()
                 withAnimation(.easeOut(duration: 0.6)) {
                     animateItems = true
                 }
                 bounceTrigger += 1
             }
+          
         }
     }
+    
 
     // MARK: - Action Card Component
     @ViewBuilder
@@ -149,3 +283,4 @@ struct UploadView: View {
         .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay), value: animateItems)
     }
 }
+   

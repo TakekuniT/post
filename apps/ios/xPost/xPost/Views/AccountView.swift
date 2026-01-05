@@ -44,9 +44,9 @@ struct AccountView: View {
                 // MARK: - Background
                 Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
                 
-                LinearGradient(colors: [.brandPurple.opacity(0.18), .clear],
+                LinearGradient(colors: [.brandPurple.opacity(0.25), .clear],
                                startPoint: .top,
-                               endPoint: .center)
+                               endPoint: .bottom)
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
