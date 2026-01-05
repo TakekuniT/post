@@ -25,12 +25,14 @@ class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         do {
-            let jsonData = try JSONEncoder().encode(post)
-
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            
+            let jsonData = try encoder.encode(post)
+            
             // --- Print JSON for debugging ---
-            // Print the JSON
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                print("Sending JSON:\n\(jsonString)") // <-- use backslash
+                print("Sending JSON:\n\(jsonString)") 
             } else {
                 print("Failed to convert JSON data to string")
             }

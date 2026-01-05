@@ -20,6 +20,9 @@ struct CreatePostView: View {
     @State private var selectedItem: PhotosPickerItem?
     @State private var isUploading = false
     
+    @State private var isScheduled = false
+    @State private var scheduleDate = Date().addingTimeInterval(3600)
+    
     let platforms = ["youtube", "instagram", "tiktok", "facebook", "linkedin"]
     let platformAssets = ["youtube": "youtube", "instagram": "instagram", "tiktok": "tiktok", "facebook": "facebook", "linkedin": "linkedin-in"]
     let apiService = APIService()
@@ -69,6 +72,40 @@ struct CreatePostView: View {
                             customTextEditor(text: $caption, placeholder: "Enter a catchy caption...")
                             customTextEditor(text: $description, placeholder: "YouTube Description (optional)")
                         }
+                        
+                        
+                        
+                        
+                        
+                        SectionHeader(title: "Schedule", icon: "calendar.badge.clock")
+
+                        VStack(spacing: 12) {
+                            Toggle("Schedule Post", isOn: $isScheduled.animation(.spring()))
+                                .tint(.brandPurple)
+                                .font(.system(.headline, design: .rounded))
+                            
+                            if isScheduled {
+                                DatePicker(
+                                    "Select Time",
+                                    selection: $scheduleDate,
+                                    in: Date()..., // Prevents selecting past dates
+                                    displayedComponents: [.date, .hourAndMinute]
+                                )
+                                .datePickerStyle(.compact)
+                                .tint(.brandPurple)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                            }
+                        }
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.brandPurple.opacity(0.4), lineWidth: 1.5)
+                        )
+                        
+                        
+                        
                         
 
                         SectionHeader(title: "Publish To", icon: "paperplane.fill")
@@ -182,7 +219,8 @@ struct CreatePostView: View {
                     caption: caption,
                     description: description,
                     video_path: videoPath,
-                    platforms: Array(selectedPlatforms)
+                    platforms: Array(selectedPlatforms),
+                    scheduled_at: isScheduled ? scheduleDate : nil
                 )
                 
                 apiService.sendPost(post: newPost)

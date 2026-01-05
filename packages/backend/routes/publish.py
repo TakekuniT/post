@@ -5,6 +5,8 @@ import os
 from utils.db_client import supabase
 import shutil
 from pathlib import Path
+from typing import Optional, List
+from datetime import datetime
 
 router = APIRouter()
 
@@ -14,14 +16,30 @@ class PublishRequest(BaseModel):
     caption: str
     description: str
     platforms: list[str]
+    scheduled_at: Optional[datetime] = None
 
 async def get_local_video(file_name: str) -> str:
     """Download video from Supabase and return a local path"""
-    local_path = os.path.join("static", file_name)  # or /tmp
+    # local_path = os.path.join("static", file_name)  # or /tmp
+    # if not os.path.exists(local_path):
+    #     data = supabase.storage.from_("videos").download(file_name)
+    #     with open(local_path, "wb") as f:
+    #         f.write(data)
+    # return local_path
+
+    # Get the absolute path to your 'backend' directory
+    base_dir = Path(__file__).resolve().parents[1] 
+    static_dir = base_dir / "static"
+    static_dir.mkdir(exist_ok=True)
+    
+    local_path = str(static_dir / file_name)
+    
     if not os.path.exists(local_path):
+        print(f"DEBUG: File not found locally. Downloading to: {local_path}")
         data = supabase.storage.from_("videos").download(file_name)
         with open(local_path, "wb") as f:
             f.write(data)
+            
     return local_path
 
 
@@ -38,15 +56,42 @@ async def publish_video(request: PublishRequest, background_tasks: BackgroundTas
     # 1. Quick Validation
     # if not os.path.exists(request.video_path):
     #     raise HTTPException(status_code=400, detail="Video file not found")
-    local_path = await get_local_video(request.video_path)
-    # 2. Hand off to background tasks (The user doesn't have to wait!)
-    background_tasks.add_task(
-        PostManager.distribute_video,
-        request.user_id,
-        local_path,
-        request.caption,
-        request.description,
-        request.platforms
-    )
 
-    return {"status": "Processing", "message": f"Upload started for {request.platforms}"}
+
+    # 2. Prepare DB entry for Supabase
+    db_entry = {
+        "user_id": request.user_id,
+        "caption": request.caption,
+        "description": request.description,
+        "video_path": request.video_path,
+        "platforms": request.platforms,
+        "scheduled_at": request.scheduled_at.isoformat() if request.scheduled_at else None,
+        "status": "pending" if request.scheduled_at else "published"
+    }
+
+    # 3. Save to Supabase
+    supabase.table("posts").upsert(db_entry).execute()
+
+
+
+
+    # 4. Publish now or wait for scheduler
+
+    if not request.scheduled_at:
+        local_path = await get_local_video(request.video_path)
+
+        background_tasks.add_task(
+            PostManager.distribute_video,
+            request.user_id,
+            local_path,
+            request.caption,
+            request.description,
+            request.platforms
+        )
+        return {"status": "Processing", "message": f"Immediate upload started for {request.platforms}"}
+    else:
+        return {"status": "Scheduled", "message": f"Post queuedfor {request.platforms}"}
+    
+
+
+PublishRequest.model_rebuild()

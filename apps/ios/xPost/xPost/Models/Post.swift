@@ -13,5 +13,6 @@ struct Post: Codable {
     var caption: String
     var description: String // for youtube
     var video_path: String
-    var platforms: [String] // e.g., ["facebook", "instagram"]
+    var platforms: [String]
+    var scheduled_at: Date?
 }
