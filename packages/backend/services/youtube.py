@@ -81,7 +81,9 @@ class YouTubeService:
                     print(f"YouTube Upload: {int(status.progress() * 100)}% complete")
 
             print(f"Response: {response}")
-            return response["id"]
+            
+            # return response["id"]
+            return {"platform": "youtube", "url": f"https://www.youtube.com/watch?v={response['id']}"}
 
         except Exception as e:
             print(f"YouTube Service Error: {str(e)}")
