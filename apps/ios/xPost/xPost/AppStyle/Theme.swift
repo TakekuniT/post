@@ -40,3 +40,15 @@ struct Haptics {
         generator.notificationOccurred(.error)
     }
 }
+
+
+func formatPlatformName(_ id: String) -> String {
+    switch id.lowercased() {
+    case "youtube": return "YouTube"
+    case "tiktok": return "TikTok"
+    case "linkedin": return "LinkedIn"
+    case "facebook": return "Facebook"
+    case "instagram": return "Instagram"
+    default: return id.capitalized
+    }
+}

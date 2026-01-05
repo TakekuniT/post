@@ -62,9 +62,9 @@ struct AccountView: View {
         NavigationStack {
             ZStack {
                 // Subtle background gradient for a premium feel
-                LinearGradient(colors: [.brandPurple.opacity(0.05), .clear],
+                LinearGradient(colors: [.brandPurple.opacity(0.25), .clear],
                                startPoint: .top,
-                               endPoint: .center)
+                               endPoint: .bottom)
                     .ignoresSafeArea()
 
                 List {
@@ -165,7 +165,7 @@ struct AccountView: View {
             .shadow(color: Color.brandPurple.opacity(0.15), radius: 4, x: 0, y: 2)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(id.capitalized)
+                Text(formatPlatformName(id))
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                 
                 HStack(spacing: 4) {
