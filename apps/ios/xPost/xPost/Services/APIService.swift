@@ -25,8 +25,11 @@ class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            
             let jsonData = try JSONEncoder().encode(post)
-
+            
             // --- Print JSON for debugging ---
             // Print the JSON
             if let jsonString = String(data: jsonData, encoding: .utf8) {
