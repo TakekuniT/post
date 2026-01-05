@@ -28,6 +28,8 @@ struct PostModel: Identifiable, Codable {
     let platforms: [String]
     let description: String?
     let user_id: UUID
+    
+    var platform_links: [String: String]?
 }
 
 

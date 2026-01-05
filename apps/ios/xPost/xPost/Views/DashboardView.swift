@@ -366,35 +366,58 @@ struct HistoryRow: View {
     }
     
     
+    
+    
     func openLink(for platform: String) {
-        let urlString: String
-        let webFallback = "https://www.\(platform.lowercased()).com"
+        let platformKey = platform.lowercased()
         
-        switch platform.lowercased() {
-        case "facebook":
-            // 'fb://' is the standard scheme for the Facebook app
-            urlString = "fb://"
-        case "linkedin":
-            // 'linkedin://' opens the LinkedIn app directly
-            urlString = "linkedin://"
-        case "instagram":
-            urlString = "instagram://app"
-        case "tiktok":
-            urlString = "snssdk1233://"
-        case "youtube":
-            urlString = "youtube://"
-        default:
-            urlString = webFallback
+        // 1. Check if we have the specific direct URL stored in our dictionary
+        if let linkString = post.platform_links?[platformKey],
+           let url = URL(string: linkString) {
+            
+            Haptics.selection()
+            UIApplication.shared.open(url)
+            return
         }
         
-        // Attempt to open the App first
-        if let appUrl = URL(string: urlString), UIApplication.shared.canOpenURL(appUrl) {
-            UIApplication.shared.open(appUrl)
-        } else {
-            // If the app isn't installed, open the website in Safari
-            if let webUrl = URL(string: webFallback) {
-                UIApplication.shared.open(webUrl)
-            }
+        // 2. Fallback: If no link is stored yet, open the general platform website
+        let webFallback = "https://www.\(platformKey).com"
+        if let url = URL(string: webFallback) {
+            UIApplication.shared.open(url)
         }
     }
+    
+    
+    
+//    func openLink(for platform: String) {
+//        let urlString: String
+//        let webFallback = "https://www.\(platform.lowercased()).com"
+//        
+//        switch platform.lowercased() {
+//        case "facebook":
+//            // 'fb://' is the standard scheme for the Facebook app
+//            urlString = "fb://"
+//        case "linkedin":
+//            // 'linkedin://' opens the LinkedIn app directly
+//            urlString = "linkedin://"
+//        case "instagram":
+//            urlString = "instagram://app"
+//        case "tiktok":
+//            urlString = "snssdk1233://"
+//        case "youtube":
+//            urlString = "youtube://"
+//        default:
+//            urlString = webFallback
+//        }
+//        
+//        // Attempt to open the App first
+//        if let appUrl = URL(string: urlString), UIApplication.shared.canOpenURL(appUrl) {
+//            UIApplication.shared.open(appUrl)
+//        } else {
+//            // If the app isn't installed, open the website in Safari
+//            if let webUrl = URL(string: webFallback) {
+//                UIApplication.shared.open(webUrl)
+//            }
+//        }
+//    }
 }

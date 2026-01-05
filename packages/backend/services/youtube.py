@@ -80,6 +80,7 @@ class YouTubeService:
                 if status:
                     print(f"YouTube Upload: {int(status.progress() * 100)}% complete")
 
+            print(f"Response: {response}")
             return response["id"]
 
         except Exception as e:
