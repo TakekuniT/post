@@ -155,7 +155,7 @@ struct AccountView: View {
                 if userTier.lowercased() == "free" {
                     perkRow(icon: "number.circle.fill", text: "10 Posts per Month", isLimit: true)
                     perkRow(icon: "clock.badge.exclamationmark", text: "No Scheduling (Instant only)", isLimit: true)
-                    perkRow(icon: "watermark", text: "Watermarked Videos", isLimit: true)
+                    perkRow(icon: "square.dashed", text: "Watermarked Videos", isLimit: true)
                     perkRow(icon: "tag.fill", text: "Branded Captions", isLimit: true)
                     perkRow(icon: "network", text: "Post to 3 Platforms",
                         isLimit: true)
