@@ -11,7 +11,6 @@ import SwiftUI
 
 struct MainDashboardView: View {
     @State private var posts: [PostModel] = []
-    @State private var isAnimating = false
     @State private var animationPhase: Int = 0
     
     var body: some View {
@@ -48,6 +47,8 @@ struct MainDashboardView: View {
                                 }
                             }
                         }
+                        .offset(y: animationPhase >= 3 ? 0 : 20)
+                        .opacity(animationPhase >= 3 ? 1 : 0)
                     }
                     .padding(.top, 20)
                 }
@@ -61,6 +62,7 @@ struct MainDashboardView: View {
             }
             .refreshable {
                 await loadData()
+                startAnimations()
             }
         }
     }
@@ -171,6 +173,10 @@ struct PendingPostCard: View {
                     
                     // MARK: - Platform Icons (Uniform with HistoryRow)
                     HStack(spacing: 6) {
+                        Text("Queued")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.brandPurple)
+                            .padding(.leading, 4)
                         ForEach(post.platforms, id: \.self) { platform in
                             Image(platform)
                                 .resizable()
@@ -178,10 +184,7 @@ struct PendingPostCard: View {
                                 .frame(width: 12, height: 12)
                         }
                         
-                        Text("Queued")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundColor(.brandPurple)
-                            .padding(.leading, 4)
+                        
                     }
                 }
                 
@@ -212,7 +215,7 @@ struct PendingPostCard: View {
                 .frame(height: 6)
                 
                 HStack {
-                    Text("\(Int(currentProgress * 100))% processed")
+                    Text("\(Int(currentProgress * 100))%")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -263,6 +266,7 @@ struct HistoryRow: View {
     let post: PostModel
     @State private var checkmarkScale: CGFloat = 0.5
     @State private var checkmarkOpacity: Double = 0
+    @State private var showPlatformPicker = false
     
     // Helper to determine if the post was today
     private var isToday: Bool {
@@ -273,7 +277,7 @@ struct HistoryRow: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(post.status == "published" ? Color.brandPurple.opacity(0.1) : Color.red.opacity(0.1))
+                    .fill(post.status == "published" ? Color.brandPurple.opacity(0.1) : Color.brandPurple.opacity(0.1))
                     .frame(width: 44, height: 44)
                 
                 Image(systemName: post.status == "published" ? "checkmark" : "xmark")
@@ -289,6 +293,11 @@ struct HistoryRow: View {
                     .lineLimit(1)
                 
                 HStack(spacing: 6) {
+                    Text(post.status.capitalized)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 4)
+                    
                     ForEach(post.platforms, id: \.self) { platform in
                         Image(platform)
                             .resizable()
@@ -296,10 +305,7 @@ struct HistoryRow: View {
                             .frame(width: 12, height: 12)
                     }
                     
-                    Text(post.status.capitalized)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.secondary)
-                        .padding(.leading, 4)
+                    
                 }
             }
             
@@ -307,9 +313,13 @@ struct HistoryRow: View {
             
             VStack(alignment: .trailing, spacing: 4) {
                 if post.status == "published" {
-                    Image(systemName: "arrow.up.right.circle.fill")
-                        .foregroundColor(.brandPurple.opacity(0.7))
-                        .font(.system(size: 18))
+                    Button {
+                        showPlatformPicker = true
+                    } label: {
+                        Image(systemName: "arrow.up.right.circle.fill")
+                            .foregroundColor(.brandPurple.opacity(0.8))
+                            .font(.system(size: 22))
+                    }
                 } else {
                     // Shows actual time (e.g., 9:58 AM)
                     Text(post.created_at, style: .time)
@@ -334,10 +344,51 @@ struct HistoryRow: View {
         .padding(.vertical, 12)
         .background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
         .padding(.horizontal, 16)
+        .confirmationDialog("Open Live Post", isPresented: $showPlatformPicker, titleVisibility: .visible) {
+                    ForEach(post.platforms, id: \.self) { platform in
+                        Button("Open \(platform.capitalized)") {
+                            openLink(for: platform)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                }
         .onAppear {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                 checkmarkScale = 1.0
                 checkmarkOpacity = 1.0
+            }
+        }
+    }
+    
+    
+    func openLink(for platform: String) {
+        let urlString: String
+        let webFallback = "https://www.\(platform.lowercased()).com"
+        
+        switch platform.lowercased() {
+        case "facebook":
+            // 'fb://' is the standard scheme for the Facebook app
+            urlString = "fb://"
+        case "linkedin":
+            // 'linkedin://' opens the LinkedIn app directly
+            urlString = "linkedin://"
+        case "instagram":
+            urlString = "instagram://app"
+        case "tiktok":
+            urlString = "snssdk1233://"
+        case "youtube":
+            urlString = "youtube://"
+        default:
+            urlString = webFallback
+        }
+        
+        // Attempt to open the App first
+        if let appUrl = URL(string: urlString), UIApplication.shared.canOpenURL(appUrl) {
+            UIApplication.shared.open(appUrl)
+        } else {
+            // If the app isn't installed, open the website in Safari
+            if let webUrl = URL(string: webFallback) {
+                UIApplication.shared.open(webUrl)
             }
         }
     }
