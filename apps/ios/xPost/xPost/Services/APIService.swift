@@ -60,18 +60,17 @@ class APIService {
     }
     
     func uploadVideo(data: Data, extension ext: String) async throws -> String {
-            // Create a unique name like "A1B2-C3D4.mp4"
             let fileName = "\(UUID().uuidString).\(ext)"
             
             let storage = supabase.storage.from("videos")
             
             // Upload the raw data
             try await storage.upload(
-                fileName,          // No 'path:' label
-                data: data,        // Changed from 'file:' to 'data:'
+                fileName,
+                data: data,
                 options: FileOptions(contentType: "video/\(ext)")
             )
             
-            return fileName // This is the 'file_path' for your Python backend
+            return fileName
         }
 }
