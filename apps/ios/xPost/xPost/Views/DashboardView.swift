@@ -62,12 +62,12 @@ struct MainDashboardView: View {
             .navigationBarHidden(true)
             .task {
                 // isAnimating = true
-                await loadData()
                 startAnimations()
+                await loadData()
             }
             .refreshable {
-                await loadData()
                 startAnimations()
+                await loadData()
             }
         }
     }
