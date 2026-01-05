@@ -10,6 +10,7 @@ import SwiftUI
 struct UploadView: View {
     @State private var showCreateSheet = false
     @State private var animateItems = false
+    @State private var bounceTrigger = 0
     
     var body: some View {
         NavigationStack {
@@ -30,7 +31,7 @@ struct UploadView: View {
                             Image(systemName: "plus.viewfinder")
                                 .font(.system(size: 70, weight: .thin))
                                 .foregroundColor(.brandPurple)
-                                .symbolEffect(.bounce, value: animateItems)
+                                .symbolEffect(.bounce, value: bounceTrigger)
                         }
                         .padding(.top, 40)
                         
@@ -97,6 +98,7 @@ struct UploadView: View {
                 withAnimation(.easeOut(duration: 0.6)) {
                     animateItems = true
                 }
+                bounceTrigger += 1
             }
         }
     }
