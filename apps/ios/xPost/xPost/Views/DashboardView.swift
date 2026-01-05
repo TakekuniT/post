@@ -7,51 +7,26 @@
 
 import SwiftUI
 
+import SwiftUI
+
 struct MainDashboardView: View {
-    @State private var posts: [PostModel] = [] // Your data from backend
+    @State private var posts: [PostModel] = []
     @State private var isAnimating = false
-    
-    
-    
-    
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "paperplane.fill")
-                .font(.system(size: 40))
-                .foregroundColor(.secondary.opacity(0.3))
-            
-            Text("No activity yet")
-                .font(.system(.headline, design: .rounded))
-                .foregroundColor(.secondary)
-            
-            Text("Your scheduled and past posts will appear here.")
-                .font(.system(.subheadline, design: .rounded))
-                .foregroundColor(.secondary.opacity(0.7))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
-    }
-    
-    
-    
+    @State private var animationPhase: Int = 0
     
     var body: some View {
         NavigationStack {
             ZStack {
                 Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
                 
-                // Matches your premium gradient header
                 LinearGradient(colors: [.brandPurple.opacity(0.25), .clear],
-                               startPoint: .top, endPoint: .center)
+                               startPoint: .top, endPoint: .bottom)
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 32) {
                         headerSection
                         
-                        // 1. PENDING SECTION (Progressive)
                         let pendingPosts = posts.filter { $0.status == "pending" }
                         if !pendingPosts.isEmpty {
                             VStack(alignment: .leading, spacing: 16) {
@@ -62,7 +37,6 @@ struct MainDashboardView: View {
                             }
                         }
 
-                        // 2. COMPLETED/FAILED SECTION (Static Row)
                         let historyPosts = posts.filter { $0.status != "pending" }
                         VStack(alignment: .leading, spacing: 16) {
                             sectionLabel("Recent Activity")
@@ -79,10 +53,49 @@ struct MainDashboardView: View {
                 }
             }
             .navigationBarHidden(true)
-            .onAppear { isAnimating = true }
+            // THESE MODIFIERS MUST BE INSIDE THE body BLOCK
+            .task {
+                // isAnimating = true
+                await loadData()
+                startAnimations()
+            }
+            .refreshable {
+                await loadData()
+            }
         }
     }
     
+    // MARK: - Animation Sequence
+    func startAnimations() {
+        // Reset and trigger sequence
+        animationPhase = 0
+        withAnimation(.easeOut(duration: 0.6)) { animationPhase = 1 }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.easeOut(duration: 0.6)) { animationPhase = 2 }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeOut(duration: 0.6)) { animationPhase = 3 }
+        }
+    }
+    
+    // MARK: - Logic
+    func loadData() async {
+        do {
+            let fetchedPosts = try await PostService.shared.fetchUserPosts()
+            await MainActor.run {
+//                withAnimation(.spring()) {
+//                    self.posts = fetchedPosts
+//                }
+                self.posts = fetchedPosts
+            }
+        } catch {
+            print("Dashboard fetch error: \(error)")
+        }
+    }
+
+    // MARK: - Subcomponents
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Dashboard")
@@ -102,79 +115,230 @@ struct MainDashboardView: View {
             .tracking(1.2)
             .padding(.horizontal, 24)
     }
-}
 
-// MARK: - Premium Pending Card
-struct PendingPostCard: View {
-    let post: PostModel
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(post.caption ?? "Video Post")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    HStack {
-                        ForEach(post.platforms, id: \.self) { platform in
-                            Image(platform) // Use your social assets
-                                .resizable().frame(width: 14, height: 14)
-                        }
-                    }
-                }
-                Spacer()
-                // Time-based label (or "Uploading...")
-                Text("Approx. 2m left")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(.brandPurple)
-            }
-            
-            // Thin, sleek progress bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.brandPurple.opacity(0.1))
-                    Capsule()
-                        .fill(Color.brandPurple.gradient)
-                        .frame(width: geo.size.width * 0.65) // Replace with real progress
-                }
-            }
-            .frame(height: 6)
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "paperplane.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.secondary.opacity(0.3))
+            Text("No activity yet")
+                .font(.system(.headline, design: .rounded))
+                .foregroundColor(.secondary)
+            Text("Your scheduled and past posts will appear here.")
+                .font(.system(.subheadline, design: .rounded))
+                .foregroundColor(.secondary.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
         }
-        .padding(20)
-        .background(RoundedRectangle(cornerRadius: 24).fill(.ultraThinMaterial))
-        .padding(.horizontal)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
     }
 }
 
-// MARK: - History Row
+
+// MARK: - Supporting Views
+struct PendingPostCard: View {
+    let post: PostModel
+    
+    @State private var rotation: Double = 0
+    @State private var currentProgress: Double = 0.0
+    @State private var timeRemaining: String = ""
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 16) {
+                // MARK: - Animated Loading Icon (Matching History Circle)
+                ZStack {
+                    Circle()
+                        .stroke(Color.brandPurple.opacity(0.1), lineWidth: 3)
+                        .frame(width: 44, height: 44)
+                    
+                    Circle()
+                        .trim(from: 0, to: 0.3)
+                        .stroke(
+                            AngularGradient(colors: [.brandPurple, .brandPurple.opacity(0)], center: .center),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .frame(width: 44, height: 44)
+                        .rotationEffect(.degrees(rotation))
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(post.caption ?? "Video Post")
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .lineLimit(1)
+                    
+                    // MARK: - Platform Icons (Uniform with HistoryRow)
+                    HStack(spacing: 6) {
+                        ForEach(post.platforms, id: \.self) { platform in
+                            Image(platform)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 12, height: 12)
+                        }
+                        
+                        Text("Queued")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.brandPurple)
+                            .padding(.leading, 4)
+                    }
+                }
+                
+                Spacer()
+                
+                // MARK: - Time Layout (Uniform with HistoryRow)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(post.scheduled_at ?? Date(), style: .time)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    
+                    Text(timeRemaining)
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // MARK: - Accurate Progress Section
+            VStack(alignment: .leading, spacing: 8) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.brandPurple.opacity(0.1))
+                        Capsule()
+                            .fill(Color.brandPurple.gradient)
+                            .frame(width: geo.size.width * CGFloat(currentProgress))
+                            .animation(.linear(duration: 1.0), value: currentProgress)
+                    }
+                }
+                .frame(height: 6)
+                
+                HStack {
+                    Text("\(Int(currentProgress * 100))% processed")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+            }
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
+        .padding(.horizontal, 16)
+        .onAppear {
+            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                rotation = 360
+            }
+            updateStatus()
+        }
+        .onReceive(timer) { _ in
+            updateStatus()
+        }
+    }
+    
+    func updateStatus() {
+        guard let targetDate = post.scheduled_at else { return }
+        let now = Date()
+        
+        // Accurate Progress: Time since creation / Total time until schedule
+        let totalDuration = targetDate.timeIntervalSince(post.created_at)
+        let elapsed = now.timeIntervalSince(post.created_at)
+        
+        if targetDate > now {
+            // Calculate progress as a percentage of the total wait time
+            let calculatedProgress = elapsed / totalDuration
+            withAnimation(.linear(duration: 1.0)) {
+                // Start at 5% so the bar is always visible even at the start
+                currentProgress = max(0.05, min(calculatedProgress, 1.0))
+            }
+            // Format time remaining (e.g., "In 2 hours")
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            timeRemaining = formatter.localizedString(for: targetDate, relativeTo: now)
+        } else {
+            currentProgress = 1.0
+            timeRemaining = "Posting now..."
+        }
+    }
+}
+
 struct HistoryRow: View {
     let post: PostModel
+    @State private var checkmarkScale: CGFloat = 0.5
+    @State private var checkmarkOpacity: Double = 0
+    
+    // Helper to determine if the post was today
+    private var isToday: Bool {
+        Calendar.current.isDateInToday(post.created_at)
+    }
     
     var body: some View {
         HStack(spacing: 16) {
-            Circle()
-                .fill(post.status == "published" ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
-                .frame(width: 44, height: 44)
-                .overlay(
-                    Image(systemName: post.status == "published" ? "checkmark" : "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(post.status == "published" ? .green : .red)
-                )
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(post.caption ?? "Completed Post")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                Text(post.status.capitalized)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            ZStack {
+                Circle()
+                    .fill(post.status == "published" ? Color.brandPurple.opacity(0.1) : Color.red.opacity(0.1))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: post.status == "published" ? "checkmark" : "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(post.status == "published" ? .brandPurple : .red)
+                    .scaleEffect(checkmarkScale)
+                    .opacity(checkmarkOpacity)
             }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(post.caption ?? "Video Post")
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .lineLimit(1)
+                
+                HStack(spacing: 6) {
+                    ForEach(post.platforms, id: \.self) { platform in
+                        Image(platform)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 12, height: 12)
+                    }
+                    
+                    Text(post.status.capitalized)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 4)
+                }
+            }
+            
             Spacer()
-            Text("Yesterday") // Replace with formatted date
-                .font(.caption2)
-                .foregroundColor(.secondary)
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                if post.status == "published" {
+                    Image(systemName: "arrow.up.right.circle.fill")
+                        .foregroundColor(.brandPurple.opacity(0.7))
+                        .font(.system(size: 18))
+                } else {
+                    // Shows actual time (e.g., 9:58 AM)
+                    Text(post.created_at, style: .time)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                }
+                
+                // Smart Relative Date logic
+                if isToday {
+                    // Shows "2h ago"
+                    Text(post.created_at, style: .relative)
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundColor(.secondary)
+                } else {
+                    // Shows "Jan 4, 2026" if it's not today
+                    Text(post.created_at, style: .date)
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
-        .padding(.horizontal)
+        .padding(.horizontal, 16)
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                checkmarkScale = 1.0
+                checkmarkOpacity = 1.0
+            }
+        }
     }
 }

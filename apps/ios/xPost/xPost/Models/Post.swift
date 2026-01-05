@@ -27,4 +27,7 @@ struct PostModel: Identifiable, Codable {
     let video_path: String
     let platforms: [String]
     let description: String?
+    let user_id: UUID
 }
+
+
