@@ -11,12 +11,14 @@ import SwiftUI
 enum Tab: String, CaseIterable {
     case home = "house.fill"
     case upload = "plus.viewfinder"
+    case social = "link.badge.plus"
     case account = "person.fill"
     
     var title: String {
         switch self {
         case .home: return "Home"
         case .upload: return "Upload"
+        case .social: return "Connect"
         case .account: return "Account"
         }
     }
@@ -94,6 +96,8 @@ struct MainTabView: View {
             MainDashboardView()
         case .upload:
             UploadView()
+        case .social:
+            SocialConnectView()
         case .account:
             AccountView()
         }

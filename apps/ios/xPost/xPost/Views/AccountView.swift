@@ -7,37 +7,7 @@
 import SwiftUI
 import AuthenticationServices
 
-final class WebAuthPresenter: NSObject, ASWebAuthenticationPresentationContextProviding {
-    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        UIApplication.shared
-            .connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first { $0.isKeyWindow } ?? ASPresentationAnchor()
-    }
-}
 
-
-
-struct AnimatedCheckmark: View {
-    @State private var percentage: CGFloat = 0
-
-    var body: some View {
-        Path { path in
-            path.move(to: CGPoint(x: 2, y: 5))
-            path.addLine(to: CGPoint(x: 5, y: 8))
-            path.addLine(to: CGPoint(x: 10, y: 2))
-        }
-        .trim(from: 0, to: percentage)
-        .stroke(Color.brandPurple, lineWidth: 2)
-        .frame(width: 12, height: 10)
-        .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.2)) {
-                percentage = 1
-            }
-        }
-    }
-}
 struct AccountView: View {
     @State private var userEmail: String = "Loading..."
     @State private var userId: String = ""

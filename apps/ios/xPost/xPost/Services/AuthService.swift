@@ -12,13 +12,19 @@ class AuthService: ObservableObject {
     static let shared = AuthService()
     
     // Sign up a new user
-    func signUp(email: String, pass: String) async throws {
+    func signUp(email: String, pass: String, username: String) async throws {
+        let userData: [String: AnyJSON] = [
+            "username": .string(username)
+        ]
+
         try await supabase.auth.signUp(
             email: email,
             password: pass,
+            data: userData,
             redirectTo: URL(string: "xpost://login-callback")
         )
     }
+    
     
     // Sign in an existing user
     func signIn(email: String, pass: String) async throws {
