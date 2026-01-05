@@ -25,6 +25,8 @@ struct MainDashboardView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 32) {
                         headerSection
+                            .offset(y: animationPhase >= 1 ? 0 : 20)
+                            .opacity(animationPhase >= 1 ? 1 : 0)
                         
                         let pendingPosts = posts.filter { $0.status == "pending" }
                         if !pendingPosts.isEmpty {
@@ -34,7 +36,11 @@ struct MainDashboardView: View {
                                     PendingPostCard(post: post)
                                 }
                             }
+                            .offset(y: animationPhase >= 2 ? 0 : 20)
+                            .opacity(animationPhase >= 2 ? 1 : 0)
                         }
+                        
+                       
 
                         let historyPosts = posts.filter { $0.status != "pending" }
                         VStack(alignment: .leading, spacing: 16) {
@@ -54,7 +60,6 @@ struct MainDashboardView: View {
                 }
             }
             .navigationBarHidden(true)
-            // THESE MODIFIERS MUST BE INSIDE THE body BLOCK
             .task {
                 // isAnimating = true
                 await loadData()
