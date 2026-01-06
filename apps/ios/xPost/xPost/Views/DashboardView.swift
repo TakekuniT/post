@@ -34,7 +34,11 @@ struct MainDashboardView: View {
 
         Task {
             do {
+                // 1. Log the ID being sent to ensure it matches your DB schema
+                print("Attempting to delete post with ID: \(post.id)")
+                
                 try await PostService.shared.deletePost(id: Int(post.id))
+                
                 await MainActor.run {
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
                         posts.removeAll { $0.id == post.id }
@@ -42,7 +46,13 @@ struct MainDashboardView: View {
                     Haptics.success()
                 }
             } catch {
-                Haptics.error()
+                // 2. IMPORTANT: Print the actual error to the console
+                print("DELETION FAILED: \(error.localizedDescription)")
+                print("Full error info: \(error)")
+                
+                await MainActor.run {
+                    Haptics.error()
+                }
             }
         }
     }
