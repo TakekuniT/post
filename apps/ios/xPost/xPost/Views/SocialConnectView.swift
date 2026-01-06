@@ -257,6 +257,7 @@ struct SocialConnectView: View {
     @State private var authPresenter = WebAuthPresenter()
     @State private var isAnimating = false
     @State private var bounceTrigger = 0
+   
     
     let backendBaseUrl = "https://youlanda-migratory-trevor.ngrok-free.dev"
     
@@ -427,17 +428,36 @@ struct SocialConnectView: View {
     // (Functions remain the same for functionality)
     
     func checkConnections() async {
-        guard !userId.isEmpty, let url = URL(string: "\(backendBaseUrl)/accounts/\(userId)") else { return }
+        guard !userId.isEmpty else { return }
+            
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            if let list = try? JSONDecoder().decode([String].self, from: data) {
-                let newSet = Set(list)
-                await MainActor.run {
-                    if newSet.count > self.connectedPlatforms.count { Haptics.success() }
-                    withAnimation(.spring()) { self.connectedPlatforms = newSet }
+            let list = try await AuthService.shared.fetchLinkedPlatforms()
+            
+            let newSet = Set(list)
+            
+            await MainActor.run {
+                if newSet.count > self.connectedPlatforms.count {
+                    Haptics.success()
+                }
+                
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    self.connectedPlatforms = newSet
                 }
             }
-        } catch { print("Connection check failed") }
+        } catch {
+            print("Sync Error: \(error.localizedDescription)")
+        }
+//        guard !userId.isEmpty, let url = URL(string: "\(backendBaseUrl)/accounts/\(userId)") else { return }
+//        do {
+//            let (data, _) = try await URLSession.shared.data(from: url)
+//            if let list = try? JSONDecoder().decode([String].self, from: data) {
+//                let newSet = Set(list)
+//                await MainActor.run {
+//                    if newSet.count > self.connectedPlatforms.count { Haptics.success() }
+//                    withAnimation(.spring()) { self.connectedPlatforms = newSet }
+//                }
+//            }
+//        } catch { print("Connection check failed") }
     }
     
     func startSocialLogin(platform: String) {
