@@ -17,6 +17,7 @@ func platformIcon(for name: String) -> String {
 
 struct MainDashboardView: View {
     @State private var posts: [PostModel] = []
+    @State private var animationPhase: Int = 0
 
     // MARK: - Computed Lists (List-safe)
     var pendingPosts: [PostModel] {
@@ -64,28 +65,41 @@ struct MainDashboardView: View {
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
-
+                        .offset(y: animationPhase >= 1 ? 0 : 20)
+                        .opacity(animationPhase >= 1 ? 1 : 0)
+                    
                     // MARK: - Pending
                     if !pendingPosts.isEmpty {
                         Section(header: sectionLabel("In Progress")) {
                             ForEach(pendingPosts) { post in
-                                PendingPostCard(post: post)
-                                    .padding(.vertical, 6)
-                                    .listRowInsets(EdgeInsets())
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                        Button(role: .destructive) {
-                                            deleteQueuedPost(post)
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                        }
-                                        .tint(.roseRed)
-                                    }
+                                PendingPostCard2(post: post)
+                                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                                Button(role: .destructive) {
+                                                    deleteQueuedPost(post)
+                                                } label: {
+                                                    Label("Cancel", systemImage: "trash")
+                                                }
+                                                .tint(.roseRed)
+                                            }
+//                                PendingPostCard(post: post)
+//                                    .padding(.vertical, 6)
+//                                    .listRowInsets(EdgeInsets())
+//                                    .listRowBackground(Color.clear)
+//                                    .listRowSeparator(.hidden)
+//                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+//                                        Button(role: .destructive) {
+//                                            deleteQueuedPost(post)
+//                                        } label: {
+//                                            Image(systemName: "xmark.circle.fill")
+//                                        }
+//                                        .tint(.roseRed)
+//                                    }
 
 
                             }
                         }
+                        .offset(y: animationPhase >= 2 ? 0 : 20)
+                        .opacity(animationPhase >= 2 ? 1 : 0)
                     }
 
                     // MARK: - History
@@ -104,13 +118,30 @@ struct MainDashboardView: View {
                             }
                         }
                     }
+                    .offset(y: animationPhase >= 3 ? 0 : 20)
+                    .opacity(animationPhase >= 3 ? 1 : 0)
                 }
                 .listStyle(.plain)
                 .scrollIndicators(.hidden)
             }
             .navigationBarHidden(true)
-            .task { await loadData() }
+            .task {
+                await loadData()
+                startLandingSequence()
+            }
             .refreshable { await loadData() }
+        }
+    }
+    
+    func startLandingSequence() {
+        withAnimation(.easeOut(duration: 0.6)) { animationPhase = 1 }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { animationPhase = 2 }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { animationPhase = 3 }
         }
     }
 
@@ -667,3 +698,112 @@ struct HistoryRow: View {
     }
     
 }
+
+
+
+
+
+struct PendingPostCard2: View {
+    @State private var timeRemaining: String = ""
+    let post: PostModel
+    @State private var currentProgress: Double = 0.0
+
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+
+            // Platform accent bar
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.brandPurple)
+                .frame(width: 4)
+
+            VStack(alignment: .leading, spacing: 8) {
+
+                // Caption
+                Text(post.caption ?? "Untitled post")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+
+                // Metadata row
+                HStack(spacing: 12) {
+
+                   
+                    
+                    // MARK: - Platform Icons (Uniform with HistoryRow)
+                    HStack(spacing: 6) {
+                        Text("Queued")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.brandPurple)
+                            .padding(.leading, 4)
+                        ForEach(post.platforms, id: \.self) { platform in
+                            Image(platformIcon(for: platform))
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 12, height: 12)
+                        }
+                        
+                        
+                    }
+
+                    Spacer()
+
+                    // Scheduled time
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(post.scheduled_at ?? Date(), style: .time)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                        
+                        Text(timeRemaining)
+                            .font(.system(size: 10, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+//                    if let date = post.scheduled_at {
+//                        Text(date, style: .time)
+//                            .font(.caption)
+//                            .foregroundColor(.secondary)
+//                    }
+                }
+            }
+            .onAppear {
+                updateStatus()
+            }
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .listRowInsets(EdgeInsets())          // edge-to-edge row
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    // MARK: - Helpers
+
+    private var formattedPlatforms: String {
+        post.platforms
+            .map { $0.capitalized }
+            .joined(separator: " • ")
+    }
+    
+    func updateStatus() {
+        guard let targetDate = post.scheduled_at else { return }
+        let now = Date()
+        
+        // Accurate Progress: Time since creation / Total time until schedule
+        let totalDuration = targetDate.timeIntervalSince(post.created_at)
+        let elapsed = now.timeIntervalSince(post.created_at)
+        
+        if targetDate > now {
+            // Calculate progress as a percentage of the total wait time
+            let calculatedProgress = elapsed / totalDuration
+           
+            // Format time remaining (e.g., "In 2 hours")
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            timeRemaining = formatter.localizedString(for: targetDate, relativeTo: now)
+        } else {
+            currentProgress = 1.0
+            timeRemaining = "Posting now..."
+        }
+    }
+}
+
