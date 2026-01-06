@@ -17,7 +17,7 @@ struct Post: Codable {
     var scheduled_at: Date?
 }
 
-struct PostModel: Identifiable, Codable {
+struct PostModel: Identifiable, Codable, Equatable {
     // This allows ForEach to track your posts using the database ID
     let id: Int64
     let created_at: Date

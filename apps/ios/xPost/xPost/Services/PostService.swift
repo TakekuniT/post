@@ -7,6 +7,14 @@ import Supabase
 class PostService {
     static let shared = PostService()
     
+    func deletePost(id: Int) async throws {
+        try await supabase.database
+            .from("posts")
+            .delete()
+            .eq("id", value: id)
+            .execute()
+    }
+    
     func fetchUserPosts() async throws -> [PostModel] {
         let session = try await supabase.auth.session
         let userId = session.user.id

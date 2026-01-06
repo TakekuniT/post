@@ -5,129 +5,131 @@
 //  Created by Takekuni Tanemori on 1/3/26.
 //
 
-import SwiftUI
 
+
+import SwiftUI
 import SafariServices
 
-
-
+func platformIcon(for name: String) -> String {
+    let lower = name.lowercased()
+    return lower == "linkedin" ? "linkedin-in" : lower
+}
 
 struct MainDashboardView: View {
     @State private var posts: [PostModel] = []
-    @State private var animationPhase: Int = 0
-    
-    func formatPlatformName(_ name: String) -> String {
-        switch name.lowercased() {
-        case "youtube":
-            return "YouTube"
-        case "tiktok":
-            return "TikTok"
-        case "linkedin":
-            return "LinkedIn"
-        case "facebook":
-            return "Facebook"
-        case "instagram":
-            return "Instagram"
-        default:
-            return name.capitalized // Fallback for unknown platforms
+
+    // MARK: - Computed Lists (List-safe)
+    var pendingPosts: [PostModel] {
+        posts.filter { $0.status == "pending" }
+    }
+
+    var historyPosts: [PostModel] {
+        posts.filter { $0.status != "pending" }
+    }
+
+    // MARK: - Delete
+    func deleteQueuedPost(_ post: PostModel) {
+        Haptics.selection()
+
+        Task {
+            do {
+                try await PostService.shared.deletePost(id: Int(post.id))
+                await MainActor.run {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                        posts.removeAll { $0.id == post.id }
+                    }
+                    Haptics.success()
+                }
+            } catch {
+                Haptics.error()
+            }
         }
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
-                
-                LinearGradient(colors: [.brandPurple.opacity(0.25), .clear],
-                               startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 32) {
-                        headerSection
-                            .offset(y: animationPhase >= 1 ? 0 : 20)
-                            .opacity(animationPhase >= 1 ? 1 : 0)
-                        
-                        let pendingPosts = posts.filter { $0.status == "pending" }
-                        if !pendingPosts.isEmpty {
-                            VStack(alignment: .leading, spacing: 16) {
-                                sectionLabel("In Progress")
-                                ForEach(pendingPosts) { post in
-                                    PendingPostCard(post: post)
-                                            .transition(.asymmetric(
-                                            insertion: .scale(scale: 0.95).combined(with: .opacity).combined(with: .move(edge: .bottom)),
-                                            removal: .opacity.combined(with: .scale(scale: 0.9))
-                                        ))
-                                }
-                            }
-                            .offset(y: animationPhase >= 2 ? 0 : 20)
-                            .opacity(animationPhase >= 2 ? 1 : 0)
-                            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: pendingPosts.count)
-                        }
-                        
-                       
+                LinearGradient(
+                    colors: [.brandPurple.opacity(0.22), .clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
 
-                        let historyPosts = posts.filter { $0.status != "pending" }
-                        VStack(alignment: .leading, spacing: 16) {
-                            sectionLabel("Recent Activity")
-                            if historyPosts.isEmpty && pendingPosts.isEmpty {
-                                emptyState
-                            } else {
-                                ForEach(historyPosts) { post in
-                                    HistoryRow(post: post)
-                                }
+                List {
+                    // MARK: - Header
+                    headerSection
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
+                    // MARK: - Pending
+                    if !pendingPosts.isEmpty {
+                        Section(header: sectionLabel("In Progress")) {
+                            ForEach(pendingPosts) { post in
+                                PendingPostCard(post: post)
+                                    .padding(.vertical, 6)
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            deleteQueuedPost(post)
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                        }
+                                        .tint(.roseRed)
+                                    }
+
+
                             }
                         }
-                        .offset(y: animationPhase >= 3 ? 0 : 20)
-                        .opacity(animationPhase >= 3 ? 1 : 0)
                     }
-                    .padding(.top, 20)
+
+                    // MARK: - History
+                    Section(header: sectionLabel("Recent Activity")) {
+                        if historyPosts.isEmpty && pendingPosts.isEmpty {
+                            emptyState
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        } else {
+                            ForEach(historyPosts) { post in
+                                HistoryRow(post: post)
+                                    .padding(.vertical, 6)
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                            }
+                        }
+                    }
                 }
+                .listStyle(.plain)
+                .scrollIndicators(.hidden)
             }
             .navigationBarHidden(true)
-            .task {
-                // isAnimating = true
-                startAnimations()
-                await loadData()
-            }
-            .refreshable {
-                startAnimations()
-                await loadData()
-            }
-        }
-    }
-    
-    // MARK: - Animation Sequence
-    func startAnimations() {
-        // Reset and trigger sequence
-        animationPhase = 0
-        withAnimation(.easeOut(duration: 0.6)) { animationPhase = 1 }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            withAnimation(.easeOut(duration: 0.6)) { animationPhase = 2 }
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.easeOut(duration: 0.6)) { animationPhase = 3 }
-        }
-    }
-    
-    // MARK: - Logic
-    func loadData() async {
-        do {
-            let fetchedPosts = try await PostService.shared.fetchUserPosts()
-            await MainActor.run {
-                withAnimation(.spring()) {
-                    self.posts = fetchedPosts
-                }
-                //self.posts = fetchedPosts
-            }
-        } catch {
-            print("Dashboard fetch error: \(error)")
+            .task { await loadData() }
+            .refreshable { await loadData() }
         }
     }
 
-    // MARK: - Subcomponents
+    // MARK: - Data
+    func loadData() async {
+        do {
+            let fetched = try await PostService.shared.fetchUserPosts()
+            await MainActor.run {
+                withAnimation(.spring()) {
+                    posts = fetched
+                }
+            }
+        } catch {
+            print("Dashboard error:", error)
+        }
+    }
+
+    // MARK: - UI Pieces
+
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Dashboard")
@@ -136,8 +138,8 @@ struct MainDashboardView: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal)
+        .padding(.top, 12)
     }
 
     private func sectionLabel(_ text: String) -> some View {
@@ -146,26 +148,260 @@ struct MainDashboardView: View {
             .foregroundColor(.secondary)
             .tracking(1.2)
             .padding(.horizontal, 24)
+            .padding(.top, 8)
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Image(systemName: "paperplane.fill")
-                .font(.system(size: 40))
-                .foregroundColor(.secondary.opacity(0.3))
+                .font(.system(size: 38))
+                .foregroundColor(.secondary.opacity(0.25))
             Text("No activity yet")
-                .font(.system(.headline, design: .rounded))
+                .font(.headline)
+            Text("Your scheduled and published posts will appear here.")
+                .font(.subheadline)
                 .foregroundColor(.secondary)
-            Text("Your scheduled and past posts will appear here.")
-                .font(.system(.subheadline, design: .rounded))
-                .foregroundColor(.secondary.opacity(0.7))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 32)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        .padding(.vertical, 64)
     }
 }
+
+//
+//import SwiftUI
+//
+//import SafariServices
+//
+//
+//func platformIcon(for name: String) -> String {
+//    let lowerName = name.lowercased()
+//    if lowerName == "linkedin" {
+//        return "linkedin-in"
+//    }
+//    return lowerName
+//}
+//
+//struct MainDashboardView: View {
+//    @State private var posts: [PostModel] = []
+//    @State private var animationPhase: Int = 0
+//    
+//    func formatPlatformName(_ name: String) -> String {
+//        switch name.lowercased() {
+//        case "youtube":
+//            return "YouTube"
+//        case "tiktok":
+//            return "TikTok"
+//        case "linkedin", "linkedin-in":
+//            return "LinkedIn"
+//        case "facebook":
+//            return "Facebook"
+//        case "instagram":
+//            return "Instagram"
+//        default:
+//            return name.capitalized // Fallback for unknown platforms
+//        }
+//    }
+//    
+//   
+//    
+//    
+//    
+//    
+//    
+//    // MARK: - Logic (inside MainDashboardView)
+//    
+//    func deleteQueuedPost(post: PostModel) {
+//        // Immediate haptic feedback for the "swipe click"
+//        Haptics.error()
+//
+//        Task {
+//            do {
+//                try await PostService.shared.deletePost(id: Int(post.id))
+//                
+//                await MainActor.run {
+//                    // Spring stiffness 120 / damping 14 is great,
+//                    // but .interactiveSpring() feels better for gestures.
+//                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0)) {
+//                        posts.removeAll { $0.id == post.id }
+//                    }
+//                    Haptics.success()
+//                }
+//            } catch {
+//                Haptics.error()
+//            }
+//        }
+//    }
+//    
+//    
+//    
+//    
+//    var body: some View {
+//        NavigationStack {
+//            ZStack {
+//                Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+//                
+//                LinearGradient(colors: [.brandPurple.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom)
+//                    .ignoresSafeArea()
+//                
+//                
+//                
+//                
+//                
+//                
+//                
+//                
+//                
+//                
+//                
+//                
+//                ScrollView(showsIndicators: false) {
+//                    LazyVStack(spacing: 32) {
+//                        headerSection
+//                            .offset(y: animationPhase >= 1 ? 0 : 20)
+//                            .opacity(animationPhase >= 1 ? 1 : 0)
+//                        
+//                        let pendingPosts = posts.filter { $0.status == "pending" }
+//                        if !pendingPosts.isEmpty {
+//                            VStack(alignment: .leading, spacing: 16) {
+//                                sectionLabel("In Progress")
+//                                
+//                                ForEach(pendingPosts) { post in
+//                                    PendingPostCard(post: post)
+//                                        // This ensures it slides and fades out smoothly
+//                                        .transition(.asymmetric(
+//                                            insertion: .opacity.combined(with: .move(edge: .bottom)),
+//                                            removal: .scale(scale: 0.8).combined(with: .opacity)
+//                                        ))
+//                                        .contextMenu {
+//                                            Button(role: .destructive) {
+//                                                deleteQueuedPost(post: post)
+//                                            } label: {
+//                                                Label("Cancel Post", systemImage: "trash")
+//                                            }
+//                                        }
+//                                }
+//                                
+//                            }
+//                            .offset(y: animationPhase >= 2 ? 0 : 20)
+//                            .opacity(animationPhase >= 2 ? 1 : 0)
+//                            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: pendingPosts.count)
+//                        }
+//                        
+//                       
+//
+//                        let historyPosts = posts.filter { $0.status != "pending" }
+//                        VStack(alignment: .leading, spacing: 16) {
+//                            sectionLabel("Recent Activity")
+//                            if historyPosts.isEmpty && pendingPosts.isEmpty {
+//                                emptyState
+//                            } else {
+//                                ForEach(historyPosts) { post in
+//                                    HistoryRow(post: post)
+//                                }
+//                            }
+//                        }
+//                        .offset(y: animationPhase >= 3 ? 0 : 20)
+//                        .opacity(animationPhase >= 3 ? 1 : 0)
+//                    }
+//                    .padding(.top, 20)
+//                    
+//                    
+//                   
+//                    
+//                    
+//                    
+//                }
+//                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: posts)
+//            }
+//            .navigationBarHidden(true)
+//            .task {
+//                // isAnimating = true
+//                startAnimations()
+//                await loadData()
+//            }
+//            .refreshable {
+//                startAnimations()
+//                await loadData()
+//            }
+//            
+//        }
+//    }
+//    
+//    // MARK: - Animation Sequence
+//    func startAnimations() {
+//        // Reset and trigger sequence
+//        animationPhase = 0
+//        withAnimation(.easeOut(duration: 0.6)) { animationPhase = 1 }
+//        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+//            withAnimation(.easeOut(duration: 0.6)) { animationPhase = 2 }
+//        }
+//        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+//            withAnimation(.easeOut(duration: 0.6)) { animationPhase = 3 }
+//        }
+//    }
+//    
+//    // MARK: - Logic
+//    func loadData() async {
+//        do {
+//            let fetchedPosts = try await PostService.shared.fetchUserPosts()
+//            await MainActor.run {
+//                withAnimation(.spring()) {
+//                    self.posts = fetchedPosts
+//                }
+//                //self.posts = fetchedPosts
+//            }
+//        } catch {
+//            print("Dashboard fetch error: \(error)")
+//        }
+//    }
+//    
+//    
+//
+//    // MARK: - Subcomponents
+//    private var headerSection: some View {
+//        VStack(alignment: .leading, spacing: 8) {
+//            Text("Dashboard")
+//                .font(.system(size: 34, weight: .bold, design: .rounded))
+//            Text("Track your global reach in real-time.")
+//                .font(.subheadline)
+//                .foregroundColor(.secondary)
+//        }
+//        .frame(maxWidth: .infinity, alignment: .leading)
+//        .padding(.horizontal)
+//    }
+//
+//    private func sectionLabel(_ text: String) -> some View {
+//        Text(text.uppercased())
+//            .font(.system(size: 12, weight: .bold, design: .rounded))
+//            .foregroundColor(.secondary)
+//            .tracking(1.2)
+//            .padding(.horizontal, 24)
+//    }
+//
+//    private var emptyState: some View {
+//        VStack(spacing: 12) {
+//            Image(systemName: "paperplane.fill")
+//                .font(.system(size: 40))
+//                .foregroundColor(.secondary.opacity(0.3))
+//            Text("No activity yet")
+//                .font(.system(.headline, design: .rounded))
+//                .foregroundColor(.secondary)
+//            Text("Your scheduled and past posts will appear here.")
+//                .font(.system(.subheadline, design: .rounded))
+//                .foregroundColor(.secondary.opacity(0.7))
+//                .multilineTextAlignment(.center)
+//                .padding(.horizontal, 40)
+//        }
+//        .frame(maxWidth: .infinity)
+//        .padding(.vertical, 60)
+//    }
+//}
+//
+//
 
 
 // MARK: - Supporting Views
@@ -209,7 +445,7 @@ struct PendingPostCard: View {
                             .foregroundColor(.brandPurple)
                             .padding(.leading, 4)
                         ForEach(post.platforms, id: \.self) { platform in
-                            Image(platform)
+                            Image(platformIcon(for: platform))
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 12, height: 12)
@@ -330,7 +566,7 @@ struct HistoryRow: View {
                         .padding(.leading, 4)
                     
                     ForEach(post.platforms, id: \.self) { platform in
-                        Image(platform)
+                        Image(platformIcon(for: platform))
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 12, height: 12)
@@ -376,13 +612,13 @@ struct HistoryRow: View {
         .background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
         .padding(.horizontal, 16)
         .confirmationDialog("Open Live Post", isPresented: $showPlatformPicker, titleVisibility: .visible) {
-                    ForEach(post.platforms, id: \.self) { platform in
-                        Button("Open on \(formatPlatformName(platform))") {
-                            openLink(for: platform)
-                        }
-                    }
-                    Button("Cancel", role: .cancel) { }
+            ForEach(post.platforms, id: \.self) { platform in
+                Button("Open on \(formatPlatformName(platform))") {
+                    openLink(for: platform)
                 }
+            }
+            Button("Cancel", role: .cancel) { }
+        }
         .onAppear {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                 checkmarkScale = 1.0
@@ -392,26 +628,6 @@ struct HistoryRow: View {
     }
     
     
-    
-    
-//    func openLink(for platform: String) {
-//        let platformKey = platform.lowercased()
-//        
-//        // 1. Check if we have the specific direct URL stored in our dictionary
-//        if let linkString = post.platform_links?[platformKey],
-//           let url = URL(string: linkString) {
-//            
-//            Haptics.selection()
-//            UIApplication.shared.open(url)
-//            return
-//        }
-//        
-//        // 2. Fallback: If no link is stored yet, open the general platform website
-//        let webFallback = "https://www.\(platformKey).com"
-//        if let url = URL(string: webFallback) {
-//            UIApplication.shared.open(url)
-//        }
-//    }
     
     
     
@@ -430,18 +646,6 @@ struct HistoryRow: View {
         
         Haptics.selection()
         
-        // 2. Platform-Specific Logic
-        
-        
-        // No longer needed
-//        if platformKey == "facebook" {
-//            // FORCE BROWSER: For Facebook, we use the Safari Controller
-//            // to prevent the FB app from hijacking the link.
-//            presentSafariBrowser(with: url)
-//        } else {
-//            // STANDARD: For others (YouTube/TikTok), let them open their apps
-//            UIApplication.shared.open(url)
-//        }
         UIApplication.shared.open(url)
     }
     
@@ -462,37 +666,4 @@ struct HistoryRow: View {
         }
     }
     
-    
-    
-//    func openLink(for platform: String) {
-//        let urlString: String
-//        let webFallback = "https://www.\(platform.lowercased()).com"
-//        
-//        switch platform.lowercased() {
-//        case "facebook":
-//            // 'fb://' is the standard scheme for the Facebook app
-//            urlString = "fb://"
-//        case "linkedin":
-//            // 'linkedin://' opens the LinkedIn app directly
-//            urlString = "linkedin://"
-//        case "instagram":
-//            urlString = "instagram://app"
-//        case "tiktok":
-//            urlString = "snssdk1233://"
-//        case "youtube":
-//            urlString = "youtube://"
-//        default:
-//            urlString = webFallback
-//        }
-//        
-//        // Attempt to open the App first
-//        if let appUrl = URL(string: urlString), UIApplication.shared.canOpenURL(appUrl) {
-//            UIApplication.shared.open(appUrl)
-//        } else {
-//            // If the app isn't installed, open the website in Safari
-//            if let webUrl = URL(string: webFallback) {
-//                UIApplication.shared.open(webUrl)
-//            }
-//        }
-//    }
 }
