@@ -9,9 +9,29 @@ import SwiftUI
 
 import SafariServices
 
+
+
+
 struct MainDashboardView: View {
     @State private var posts: [PostModel] = []
     @State private var animationPhase: Int = 0
+    
+    func formatPlatformName(_ name: String) -> String {
+        switch name.lowercased() {
+        case "youtube":
+            return "YouTube"
+        case "tiktok":
+            return "TikTok"
+        case "linkedin":
+            return "LinkedIn"
+        case "facebook":
+            return "Facebook"
+        case "instagram":
+            return "Instagram"
+        default:
+            return name.capitalized // Fallback for unknown platforms
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -34,10 +54,15 @@ struct MainDashboardView: View {
                                 sectionLabel("In Progress")
                                 ForEach(pendingPosts) { post in
                                     PendingPostCard(post: post)
+                                            .transition(.asymmetric(
+                                            insertion: .scale(scale: 0.95).combined(with: .opacity).combined(with: .move(edge: .bottom)),
+                                            removal: .opacity.combined(with: .scale(scale: 0.9))
+                                        ))
                                 }
                             }
                             .offset(y: animationPhase >= 2 ? 0 : 20)
                             .opacity(animationPhase >= 2 ? 1 : 0)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: pendingPosts.count)
                         }
                         
                        
@@ -92,10 +117,10 @@ struct MainDashboardView: View {
         do {
             let fetchedPosts = try await PostService.shared.fetchUserPosts()
             await MainActor.run {
-//                withAnimation(.spring()) {
-//                    self.posts = fetchedPosts
-//                }
-                self.posts = fetchedPosts
+                withAnimation(.spring()) {
+                    self.posts = fetchedPosts
+                }
+                //self.posts = fetchedPosts
             }
         } catch {
             print("Dashboard fetch error: \(error)")
@@ -150,6 +175,7 @@ struct PendingPostCard: View {
     @State private var rotation: Double = 0
     @State private var currentProgress: Double = 0.0
     @State private var timeRemaining: String = ""
+    @State private var isVisible: Bool = false
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -351,7 +377,7 @@ struct HistoryRow: View {
         .padding(.horizontal, 16)
         .confirmationDialog("Open Live Post", isPresented: $showPlatformPicker, titleVisibility: .visible) {
                     ForEach(post.platforms, id: \.self) { platform in
-                        Button("Open \(platform.capitalized)") {
+                        Button("Open on \(formatPlatformName(platform))") {
                             openLink(for: platform)
                         }
                     }
