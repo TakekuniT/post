@@ -43,7 +43,10 @@ struct CreatePostView: View {
                         SectionHeader(title: "Details", icon: "text.alignleft")
                         VStack(spacing: 16) {
                             customTextEditor(text: $caption, placeholder: "Enter a catchy caption...")
-                            customTextEditor(text: $description, placeholder: "YouTube Description (optional)")
+                            if selectedPlatforms.contains("youtube") {
+                                    customTextEditor(text: $description, placeholder: "YouTube Description (optional)")
+                                        .transition(.move(edge: .top).combined(with: .opacity)) // Adds a smooth slide-in effect
+                                }
                         }
                         SectionHeader(title: "Schedule", icon: "calendar.badge.clock")
                         scheduleToggle
