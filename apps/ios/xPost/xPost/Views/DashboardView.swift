@@ -405,14 +405,18 @@ struct HistoryRow: View {
         Haptics.selection()
         
         // 2. Platform-Specific Logic
-        if platformKey == "facebook" {
-            // FORCE BROWSER: For Facebook, we use the Safari Controller
-            // to prevent the FB app from hijacking the link.
-            presentSafariBrowser(with: url)
-        } else {
-            // STANDARD: For others (YouTube/TikTok), let them open their apps
-            UIApplication.shared.open(url)
-        }
+        
+        
+        // No longer needed
+//        if platformKey == "facebook" {
+//            // FORCE BROWSER: For Facebook, we use the Safari Controller
+//            // to prevent the FB app from hijacking the link.
+//            presentSafariBrowser(with: url)
+//        } else {
+//            // STANDARD: For others (YouTube/TikTok), let them open their apps
+//            UIApplication.shared.open(url)
+//        }
+        UIApplication.shared.open(url)
     }
     
     // MARK: - Browser Presenter
