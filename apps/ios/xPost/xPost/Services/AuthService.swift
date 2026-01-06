@@ -49,5 +49,27 @@ class AuthService: ObservableObject {
         let attributes = UserAttributes(password: new)
         try await supabase.auth.update(user: attributes)
     }
+    
+    
+    func fetchLinkedPlatforms() async throws -> [String] {
+        let session = try await supabase.auth.session
+        let userId = session.user.id
+
+        struct PlatformRow: Decodable {
+            let platform: String
+        }
+
+       
+        let response: [PlatformRow] = try await supabase
+            .from("social_accounts")
+            .select("platform")
+            .eq("user_id", value: userId)
+            .execute()
+            .value
+
+        
+        let platforms = response.map { $0.platform.lowercased() }
+        return Array(Set(platforms))
+    }
    
 }
