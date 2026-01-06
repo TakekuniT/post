@@ -16,6 +16,8 @@ struct CreatePostView: View {
     @State private var description = ""
     @State private var caption = ""
     @State private var selectedPlatforms: Set<String> = []
+    @State private var linkedPlatforms: Set<String> = [] // Data from Supabase
+    @State private var isLoadingLinks = true
     
     @State private var selectedItem: PhotosPickerItem?
     @State private var isUploading = false
@@ -109,25 +111,28 @@ struct CreatePostView: View {
                         
 
                         SectionHeader(title: "Publish To", icon: "paperplane.fill")
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible(), spacing: 16)], spacing: 16) {
-                            ForEach(platforms, id: \.self) { platform in
-                                PlatformCard(
-                                    platform: platform,
-                                    assetName: platformAssets[platform] ?? platform,
-                                    isSelected: selectedPlatforms.contains(platform)
-                                ) {
-                                    Haptics.selection()
-                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                        if selectedPlatforms.contains(platform) {
-                                            selectedPlatforms.remove(platform)
-                                        } else {
-                                            selectedPlatforms.insert(platform)
-                                        }
-                                    }
-                                }
-                                .padding(.horizontal, 4)
-                            }
-                        }
+//                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible(), spacing: 16)], spacing: 16) {
+//                            ForEach(platforms, id: \.self) { platform in
+//                                PlatformCard(
+//                                    platform: platform,
+//                                    assetName: platformAssets[platform] ?? platform,
+//                                    isSelected: selectedPlatforms.contains(platform)
+//                                ) {
+//                                    Haptics.selection()
+//                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+//                                        if selectedPlatforms.contains(platform) {
+//                                            selectedPlatforms.remove(platform)
+//                                        } else {
+//                                            selectedPlatforms.insert(platform)
+//                                        }
+//                                    }
+//                                }
+//                                .padding(.horizontal, 4)
+//                            }
+//                        }
+                        
+                        
+                        platformSelectionGrid
                     }
                     .padding(20)
                 }
@@ -165,10 +170,49 @@ struct CreatePostView: View {
                     }
                 }
             }
+            .task {
+                if let linked = try? await AuthService.shared.fetchLinkedPlatforms() {
+                                    withAnimation(.spring()) {
+                        self.linkedPlatforms = Set(linked)
+                    }
+                }
+                self.isLoadingLinks = false
+            }
         }
     }
 
     // MARK: - Subviews
+    private var platformSelectionGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible(), spacing: 16)], spacing: 16) {
+            ForEach(platforms, id: \.self) { platform in
+                let isLinked = linkedPlatforms.contains(platform)
+                PlatformCard(
+                    platform: platform,
+                    assetName: platformAssets[platform] ?? platform,
+                    isSelected: selectedPlatforms.contains(platform),
+                    
+                    action: {
+                        if isLinked {
+                            Haptics.selection()
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                if selectedPlatforms.contains(platform) {
+                                    selectedPlatforms.remove(platform)
+                                } else {
+                                    selectedPlatforms.insert(platform)
+                                }
+                            }
+                        } else {
+                            Haptics.error()
+                        }
+                    },
+                    isLinked: isLinked
+                )
+                .padding(.horizontal, 4)
+            }
+        }
+    }
+    
+    
     @ViewBuilder
     func SectionHeader(title: String, icon: String) -> some View {
         HStack {
@@ -240,6 +284,7 @@ struct PlatformCard: View {
     let assetName: String
     let isSelected: Bool
     let action: () -> Void
+    let isLinked: Bool
     
     var body: some View {
         Button(action: action) {
@@ -254,16 +299,24 @@ struct PlatformCard: View {
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                 
                 Spacer()
-                
-                if isSelected {
-//                    Image(systemName: "checkmark.circle.fill")
-//                        .transition(.scale.combined(with: .opacity))
+                if !isLinked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size:10))
+                        .foregroundColor(.secondary.opacity(0.6))
+                } else if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .transition(.asymmetric(
                             insertion: .scale.combined(with: .opacity).animation(.spring(response: 0.5, dampingFraction: 0.6)),
                             removal: .opacity.animation(.easeOut(duration: 0.3))
                         ))
                 }
+//                if isSelected {
+//                    Image(systemName: "checkmark.circle.fill")
+//                        .transition(.asymmetric(
+//                            insertion: .scale.combined(with: .opacity).animation(.spring(response: 0.5, dampingFraction: 0.6)),
+//                            removal: .opacity.animation(.easeOut(duration: 0.3))
+//                        ))
+//                }
             }
             .padding(12)
             .background(isSelected ? Color.brandPurple : Color.brandPurple.opacity(0.05))
@@ -273,5 +326,6 @@ struct PlatformCard: View {
             .scaleEffect(isSelected ? 1.05 : 1.0)
         }
         .buttonStyle(.plain)
+        .disabled(!isLinked)
     }
 }
