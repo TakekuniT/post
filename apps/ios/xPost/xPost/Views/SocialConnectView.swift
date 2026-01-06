@@ -489,6 +489,9 @@ struct SocialConnectView: View {
     }
     
     func formatPlatformName(_ id: String) -> String {
-        id == "tiktok" ? "TikTok" : id.capitalized
+        id == "tiktok" ? "TikTok":
+        id == "youtube" ? "YouTube":
+        id == "linkedin" ? "LinkedIn":
+        id.capitalized
     }
 }

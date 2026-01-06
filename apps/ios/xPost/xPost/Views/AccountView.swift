@@ -238,7 +238,8 @@ struct AccountView: View {
                 
                 await MainActor.run {
                     self.userName = profile.username
-                    self.userTier = profile.tier
+                    //self.userTier = profile.tier
+                    
                 }
             } catch {
                 print("Profile fetch error: \(error)")
