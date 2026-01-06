@@ -770,7 +770,8 @@ struct PendingPostCard2: View {
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
-        .background(Color(.secondarySystemGroupedBackground))
+        //.background(Color(.secondarySystemGroupedBackground))
+        .background(Rectangle().fill(.ultraThinMaterial))
         .listRowInsets(EdgeInsets())          // edge-to-edge row
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
