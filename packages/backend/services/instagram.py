@@ -125,7 +125,28 @@ class InstagramService:
             }).json()
 
             print(f"Successfully posted to Instagram! Media ID: {publish_res.get('id')}")
-            return publish_res.get("id")
+            media_id= publish_res.get("id")
+
+            if not media_id:
+                raise Exception("Failed to get Media ID after publishing")
+
+            # --- STEP 5: Fetch the Permalink ---
+            # We query the newly created Media ID to get its public URL
+            media_info_url = f"https://graph.facebook.com/v19.0/{media_id}"
+            media_info = requests.get(media_info_url, params={
+                "fields": "permalink",
+                "access_token": token
+            }).json()
+
+            ig_url = media_info.get("permalink")
+
+            # If for some reason permalink fails, we fallback to a standard ID link
+            if not ig_url:
+                ig_url = f"https://www.instagram.com/reels/{media_id}/"
+
+            print(f"Successfully posted to Instagram! Link: {ig_url}")
+            
+            return {"platform": "instagram", "url": ig_url}
 
         except Exception as e:
             print(f"Instagram Service Error: {str(e)}")

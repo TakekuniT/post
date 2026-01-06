@@ -66,12 +66,14 @@ async def publish_video(request: PublishRequest, background_tasks: BackgroundTas
         "video_path": request.video_path,
         "platforms": request.platforms,
         "scheduled_at": request.scheduled_at.isoformat() if request.scheduled_at else None,
-        "status": "pending" if request.scheduled_at else "published"
+        "status": "pending" if request.scheduled_at else "published",
+        "platform_links": {}
     }
 
     # 3. Save to Supabase
-    supabase.table("posts").upsert(db_entry).execute()
-
+    # supabase.table("posts").upsert(db_entry).execute()
+    response = supabase.table("posts").insert(db_entry).execute()
+    post_id = response.data[0]["id"]
 
 
 
@@ -82,6 +84,7 @@ async def publish_video(request: PublishRequest, background_tasks: BackgroundTas
 
         background_tasks.add_task(
             PostManager.distribute_video,
+            post_id, # pass post id to background
             request.user_id,
             local_path,
             request.caption,

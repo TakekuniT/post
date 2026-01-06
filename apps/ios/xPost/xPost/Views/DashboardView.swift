@@ -7,11 +7,31 @@
 
 import SwiftUI
 
-import SwiftUI
+import SafariServices
+
+
+
 
 struct MainDashboardView: View {
     @State private var posts: [PostModel] = []
     @State private var animationPhase: Int = 0
+    
+    func formatPlatformName(_ name: String) -> String {
+        switch name.lowercased() {
+        case "youtube":
+            return "YouTube"
+        case "tiktok":
+            return "TikTok"
+        case "linkedin":
+            return "LinkedIn"
+        case "facebook":
+            return "Facebook"
+        case "instagram":
+            return "Instagram"
+        default:
+            return name.capitalized // Fallback for unknown platforms
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -34,10 +54,15 @@ struct MainDashboardView: View {
                                 sectionLabel("In Progress")
                                 ForEach(pendingPosts) { post in
                                     PendingPostCard(post: post)
+                                            .transition(.asymmetric(
+                                            insertion: .scale(scale: 0.95).combined(with: .opacity).combined(with: .move(edge: .bottom)),
+                                            removal: .opacity.combined(with: .scale(scale: 0.9))
+                                        ))
                                 }
                             }
                             .offset(y: animationPhase >= 2 ? 0 : 20)
                             .opacity(animationPhase >= 2 ? 1 : 0)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: pendingPosts.count)
                         }
                         
                        
@@ -92,10 +117,10 @@ struct MainDashboardView: View {
         do {
             let fetchedPosts = try await PostService.shared.fetchUserPosts()
             await MainActor.run {
-//                withAnimation(.spring()) {
-//                    self.posts = fetchedPosts
-//                }
-                self.posts = fetchedPosts
+                withAnimation(.spring()) {
+                    self.posts = fetchedPosts
+                }
+                //self.posts = fetchedPosts
             }
         } catch {
             print("Dashboard fetch error: \(error)")
@@ -150,6 +175,7 @@ struct PendingPostCard: View {
     @State private var rotation: Double = 0
     @State private var currentProgress: Double = 0.0
     @State private var timeRemaining: String = ""
+    @State private var isVisible: Bool = false
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -351,7 +377,7 @@ struct HistoryRow: View {
         .padding(.horizontal, 16)
         .confirmationDialog("Open Live Post", isPresented: $showPlatformPicker, titleVisibility: .visible) {
                     ForEach(post.platforms, id: \.self) { platform in
-                        Button("Open \(platform.capitalized)") {
+                        Button("Open on \(formatPlatformName(platform))") {
                             openLink(for: platform)
                         }
                     }
@@ -366,35 +392,107 @@ struct HistoryRow: View {
     }
     
     
+    
+    
+//    func openLink(for platform: String) {
+//        let platformKey = platform.lowercased()
+//        
+//        // 1. Check if we have the specific direct URL stored in our dictionary
+//        if let linkString = post.platform_links?[platformKey],
+//           let url = URL(string: linkString) {
+//            
+//            Haptics.selection()
+//            UIApplication.shared.open(url)
+//            return
+//        }
+//        
+//        // 2. Fallback: If no link is stored yet, open the general platform website
+//        let webFallback = "https://www.\(platformKey).com"
+//        if let url = URL(string: webFallback) {
+//            UIApplication.shared.open(url)
+//        }
+//    }
+    
+    
+    
     func openLink(for platform: String) {
-        let urlString: String
-        let webFallback = "https://www.\(platform.lowercased()).com"
+        let platformKey = platform.lowercased()
         
-        switch platform.lowercased() {
-        case "facebook":
-            // 'fb://' is the standard scheme for the Facebook app
-            urlString = "fb://"
-        case "linkedin":
-            // 'linkedin://' opens the LinkedIn app directly
-            urlString = "linkedin://"
-        case "instagram":
-            urlString = "instagram://app"
-        case "tiktok":
-            urlString = "snssdk1233://"
-        case "youtube":
-            urlString = "youtube://"
-        default:
-            urlString = webFallback
+        // 1. Get the URL string from the dictionary
+        let urlString: String
+        if let link = post.platform_links?[platformKey] {
+            urlString = link
+        } else {
+            urlString = "https://www.\(platformKey).com"
         }
         
-        // Attempt to open the App first
-        if let appUrl = URL(string: urlString), UIApplication.shared.canOpenURL(appUrl) {
-            UIApplication.shared.open(appUrl)
-        } else {
-            // If the app isn't installed, open the website in Safari
-            if let webUrl = URL(string: webFallback) {
-                UIApplication.shared.open(webUrl)
+        guard let url = URL(string: urlString) else { return }
+        
+        Haptics.selection()
+        
+        // 2. Platform-Specific Logic
+        
+        
+        // No longer needed
+//        if platformKey == "facebook" {
+//            // FORCE BROWSER: For Facebook, we use the Safari Controller
+//            // to prevent the FB app from hijacking the link.
+//            presentSafariBrowser(with: url)
+//        } else {
+//            // STANDARD: For others (YouTube/TikTok), let them open their apps
+//            UIApplication.shared.open(url)
+//        }
+        UIApplication.shared.open(url)
+    }
+    
+    // MARK: - Browser Presenter
+    private func presentSafariBrowser(with url: URL) {
+        let safariVC = SFSafariViewController(url: url)
+        safariVC.modalPresentationStyle = .pageSheet // Nice sliding sheet look
+        
+        // We need to find the top-most view controller to present the browser
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            
+            var topController = rootVC
+            while let presented = topController.presentedViewController {
+                topController = presented
             }
+            topController.present(safariVC, animated: true)
         }
     }
+    
+    
+    
+//    func openLink(for platform: String) {
+//        let urlString: String
+//        let webFallback = "https://www.\(platform.lowercased()).com"
+//        
+//        switch platform.lowercased() {
+//        case "facebook":
+//            // 'fb://' is the standard scheme for the Facebook app
+//            urlString = "fb://"
+//        case "linkedin":
+//            // 'linkedin://' opens the LinkedIn app directly
+//            urlString = "linkedin://"
+//        case "instagram":
+//            urlString = "instagram://app"
+//        case "tiktok":
+//            urlString = "snssdk1233://"
+//        case "youtube":
+//            urlString = "youtube://"
+//        default:
+//            urlString = webFallback
+//        }
+//        
+//        // Attempt to open the App first
+//        if let appUrl = URL(string: urlString), UIApplication.shared.canOpenURL(appUrl) {
+//            UIApplication.shared.open(appUrl)
+//        } else {
+//            // If the app isn't installed, open the website in Safari
+//            if let webUrl = URL(string: webFallback) {
+//                UIApplication.shared.open(webUrl)
+//            }
+//        }
+//    }
 }

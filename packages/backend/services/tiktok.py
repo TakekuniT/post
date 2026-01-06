@@ -229,7 +229,17 @@ class TikTokService:
                     print(f"TikTok: {int(((i+1)/total_chunks)*100)}% Uploaded")
 
             print(f"TikTok upload complete! Publish ID: {publish_id}")
-            return publish_id
+
+            status_url = "https://open.tiktokapis.com/v2/post/publish/status/fetch/"
+            status_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+            
+            status_res = requests.post(status_url, json={"publish_id": publish_id}, headers=status_headers).json()
+            
+            # 3. Get the REAL Video ID (public_item_id)
+            video_id = status_res.get("data", {}).get("public_item_id")
+
+            return {"platform": "tiktok", "url": f"https://www.tiktok.com/v/{video_id}"}
+            # will take a look at tiktok again after production
 
         except Exception as e:
             print(f"TikTok Service Detailed Error: {str(e)}")

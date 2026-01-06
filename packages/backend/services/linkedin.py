@@ -145,7 +145,21 @@ class LinkedInService:
                 raise Exception(f"LinkedIn Posting Failed: {post_res.text}")
 
             print(f"[LinkedIn Upload] Success! Post created for {video_urn}")
-            return video_urn
+
+           
+            if post_res.status_code == 201:
+            # Get the ID from the header (e.g., "urn:li:share:123456789")
+                post_urn = post_res.headers.get("x-restli-id")
+                
+                if post_urn:
+                    # Extract the numeric ID
+                    post_id = post_urn.split(":")[-1]
+                    
+                    # TRY THIS FORMAT: It works for both Activity and Share IDs
+                    share_url = f"https://www.linkedin.com/feed/update/urn:li:ugcPost:{post_id}"
+                    
+                    print(f"[LinkedIn] Link: {share_url}")
+                    return {"platform": "linkedin", "url": share_url}
 
         except Exception as e:
             print(f"[LinkedIn Service Error] {str(e)}")

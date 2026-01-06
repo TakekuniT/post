@@ -4,10 +4,11 @@ from services.tiktok import TikTokService
 from services.instagram import InstagramService
 from services.facebook import FacebookService
 from services.linkedin import LinkedInService
+from utils.db_client import supabase
 
 class PostManager:
     @staticmethod
-    async def distribute_video(user_id: str, file_path: str, caption: str, description: str, platforms: list):
+    async def distribute_video(post_id: str,user_id: str, file_path: str, caption: str, description: str, platforms: list):
         """
         Coordinates multi-platform uploads.
         """
@@ -30,4 +31,17 @@ class PostManager:
 
         # Run all uploads at the same time!
         results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        links_to_save = {}
+        for res in results:
+            if isinstance(res, dict) and res.get("url"):
+                links_to_save[res["platform"]] = res["url"]
+
+        # Update the row in Supabase using the post_id
+        if links_to_save:
+            supabase.table("posts").update({
+                "platform_links": links_to_save
+            }).eq("id", post_id).execute()
+
+
         return results

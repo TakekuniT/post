@@ -62,7 +62,7 @@ class FacebookService:
 
             if "video_id" not in init_res:
                 raise Exception(f"FB Init Failed: {init_res}")
-
+            
             video_id = init_res["video_id"]
             upload_url = init_res["upload_url"]
             print(f"[FB Upload] Session started. Video ID: {video_id}")
@@ -77,11 +77,12 @@ class FacebookService:
                     "Content-Type": "application/octet-stream"
                 }
                 upload_res = requests.post(upload_url, data=f, headers=headers).json()
-
+            print(f"[FB Upload] upload_res: {upload_res}")
+            print(f"[FB Upload] init_res: {init_res}")
             if not upload_res.get("success"):
                 raise Exception(f"FB Bytes Upload Failed: {upload_res}")
             print(f"[FB Upload] Bytes pushed successfully.")
-
+            print(f"[FB Upload] test link 4: https://www.facebook.com/permalink.php?story_fbid={video_id}&id={page_id}")
             # --- PHASE 3: PUBLISH (FINISH) ---
             # This is where we set the caption and make it public
             publish_url = f"https://graph.facebook.com/v19.0/{page_id}/video_reels"
@@ -101,8 +102,9 @@ class FacebookService:
                 raise Exception(f"FB Finalize Failed: {publish_res}")
 
             print(f"[FB Upload] Success! Reel is live. ID: {video_id}")
-            return video_id
-
+            #only works on browser: return {"platform": "facebook", "url": f"https://www.facebook.com/permalink.php?story_fbid={video_id}&id={page_id}"}
+            # return {"platform": "facebook", "url": f"https://www.google.com/url?q=https://www.facebook.com/permalink.php?story_fbid={video_id}%26id={page_id}"}
+            return {"platform": "facebook", "url": f"https://www.facebook.com/{page_id}/videos/{video_id}"}
         except Exception as e:
             print(f"[FB Service Error] {str(e)}")
             return None

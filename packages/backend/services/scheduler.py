@@ -29,7 +29,7 @@ async def check_and_publish():
 
     for post in posts_to_publish:
         post_id = post['id']
-        platforms = post['platforms'] # This is your text[] array
+        platforms = post['platforms'] 
         
         print(f"Publishing Post {post_id} to {platforms}...")
 
@@ -44,6 +44,7 @@ async def check_and_publish():
             if os.path.exists(local_path):
                 print(f"Video downloaded to {local_path}")
                 results = await PostManager.distribute_video(
+                    post_id=post_id,
                     user_id=post['user_id'],
                     file_path=local_path,
                     caption=post['caption'],
