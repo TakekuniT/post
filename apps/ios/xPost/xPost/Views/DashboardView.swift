@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-import SwiftUI
+import SafariServices
 
 struct MainDashboardView: View {
     @State private var posts: [PostModel] = []
@@ -368,22 +368,67 @@ struct HistoryRow: View {
     
     
     
+//    func openLink(for platform: String) {
+//        let platformKey = platform.lowercased()
+//        
+//        // 1. Check if we have the specific direct URL stored in our dictionary
+//        if let linkString = post.platform_links?[platformKey],
+//           let url = URL(string: linkString) {
+//            
+//            Haptics.selection()
+//            UIApplication.shared.open(url)
+//            return
+//        }
+//        
+//        // 2. Fallback: If no link is stored yet, open the general platform website
+//        let webFallback = "https://www.\(platformKey).com"
+//        if let url = URL(string: webFallback) {
+//            UIApplication.shared.open(url)
+//        }
+//    }
+    
+    
+    
     func openLink(for platform: String) {
         let platformKey = platform.lowercased()
         
-        // 1. Check if we have the specific direct URL stored in our dictionary
-        if let linkString = post.platform_links?[platformKey],
-           let url = URL(string: linkString) {
-            
-            Haptics.selection()
-            UIApplication.shared.open(url)
-            return
+        // 1. Get the URL string from the dictionary
+        let urlString: String
+        if let link = post.platform_links?[platformKey] {
+            urlString = link
+        } else {
+            urlString = "https://www.\(platformKey).com"
         }
         
-        // 2. Fallback: If no link is stored yet, open the general platform website
-        let webFallback = "https://www.\(platformKey).com"
-        if let url = URL(string: webFallback) {
+        guard let url = URL(string: urlString) else { return }
+        
+        Haptics.selection()
+        
+        // 2. Platform-Specific Logic
+        if platformKey == "facebook" {
+            // FORCE BROWSER: For Facebook, we use the Safari Controller
+            // to prevent the FB app from hijacking the link.
+            presentSafariBrowser(with: url)
+        } else {
+            // STANDARD: For others (YouTube/TikTok), let them open their apps
             UIApplication.shared.open(url)
+        }
+    }
+    
+    // MARK: - Browser Presenter
+    private func presentSafariBrowser(with url: URL) {
+        let safariVC = SFSafariViewController(url: url)
+        safariVC.modalPresentationStyle = .pageSheet // Nice sliding sheet look
+        
+        // We need to find the top-most view controller to present the browser
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            
+            var topController = rootVC
+            while let presented = topController.presentedViewController {
+                topController = presented
+            }
+            topController.present(safariVC, animated: true)
         }
     }
     
