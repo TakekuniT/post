@@ -3,6 +3,7 @@ import requests
 import math
 from datetime import datetime, timedelta, timezone
 from utils.db_client import UserManager
+import asyncio
 
 class TikTokService:
     @staticmethod
@@ -259,12 +260,28 @@ class TikTokService:
 
             status_url = "https://open.tiktokapis.com/v2/post/publish/status/fetch/"
             status_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+            # await asyncio.sleep(5)
+            # status_res = requests.post(status_url, json={"publish_id": publish_id}, headers=status_headers).json()
             
-            status_res = requests.post(status_url, json={"publish_id": publish_id}, headers=status_headers).json()
-            
-            # 3. Get the REAL Video ID (public_item_id)
-            video_id = status_res.get("data", {}).get("public_item_id")
+            # # 3. Get the REAL Video ID (public_item_id)
+            # video_id = status_res.get("data", {}).get("public_item_id")
 
+            for attempt in range(20):
+                status_res = requests.post(status_url, json={"publish_id": publish_id}, headers=status_headers).json()
+                data = status_res.get("data", {})
+                status = data.get("status")
+                video_id = data.get("public_item_id")
+
+                print(f"DEBUG: TikTok Status Check {attempt}: {status} | ID Found: {video_id is not None}")
+                if video_id:
+                    return {"platform": "tiktok", "url": f"https://www.tiktok.com/v/{video_id}"}
+                
+                if status == "FAILED":
+                    print(f"DEBUG: TikTok processing failed: {data.get('fail_reason')}")
+                    break
+
+                # Wait 5 seconds before checking again
+                await asyncio.sleep(5)
             return {"platform": "tiktok", "url": f"https://www.tiktok.com/v/{video_id}"}
             # will take a look at tiktok again after production
 
