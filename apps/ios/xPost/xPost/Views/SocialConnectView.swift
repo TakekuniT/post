@@ -40,224 +40,26 @@ struct AnimatedCheckmark: View {
     }
 }
 
-//struct SocialConnectView: View {
-//    @State private var userId: String = ""
-//    @State private var connectedPlatforms: Set<String> = []
-//    @State private var authSession: ASWebAuthenticationSession?
-//    @State private var authPresenter = WebAuthPresenter()
-//    @State private var isAnimating = false
-//    @State private var bounceTrigger = 0
-//    
-//    let backendBaseUrl = "https://youlanda-migratory-trevor.ngrok-free.dev"
-//    
-//    let platformAssets: [String: String] = [
-//        "tiktok": "tiktok",
-//        "instagram": "instagram",
-//        "youtube": "youtube",
-//        "facebook": "facebook",
-//        "linkedin": "linkedin-in"
-//    ]
-//
-//    var body: some View {
-//        NavigationStack {
-//            ZStack {
-//                // MARK: - Background
-//                LinearGradient(colors: [.brandPurple.opacity(0.25), .clear],
-//                               startPoint: .top,
-//                               endPoint: .bottom)
-//                    .ignoresSafeArea()
-//
-//                ScrollView {
-//                    VStack(spacing: 25) {
-//                        
-//                        // MARK: - Header Section
-////                        SectionHeader(
-////                            title: "Connect Socials",
-////                            subtitle: "Link your accounts to sync posts instantly.",
-////                            isAnimating: isAnimating
-////                        )
-//                        ZStack {
-//                            Circle()
-//                                .fill(Color.brandPurple.opacity(0.1))
-//                                .frame(width: 160, height: 160)
-//                            
-//                            Image(systemName: "link.badge.plus") // Matching the social theme
-//                                .font(.system(size: 70, weight: .thin))
-//                                .foregroundColor(.brandPurple)
-//                                .symbolEffect(.bounce, value: bounceTrigger)
-//                        }
-//                        .padding(.top, 40)
-//                        
-//                        VStack(spacing: 8) {
-//                            Text("Connect Socials")
-//                                .font(.system(.title, design: .rounded, weight: .bold))
-//                            
-//                            Text("Link your accounts to sync posts instantly.")
-//                                .font(.subheadline)
-//                                .foregroundColor(.secondary)
-//                                .multilineTextAlignment(.center)
-//                                .padding(.horizontal, 40)
-//                        }
-//                        .opacity(isAnimating ? 1 : 0)
-//                        .offset(y: isAnimating ? 0 : 10)
-//                        
-//                        // MARK: - Platform Cards
-//                        VStack(spacing: 16) {
-//                            let list = ["tiktok", "instagram", "youtube", "facebook", "linkedin"]
-//                            ForEach(0..<list.count, id: \.self) { index in
-//                                let id = list[index]
-//                                platformCard(id: id)
-//                                    .opacity(isAnimating ? 1 : 0)
-//                                    .offset(y: isAnimating ? 0 : 20)
-//                                    .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(Double(index) * 0.1), value: isAnimating)
-//                            }
-//                        }
-//                        .padding(.horizontal)
-//                        
-//                        Spacer(minLength: 50)
-//                    }
-//                    .padding(.top, 0)
-//                }
-//            }
-//            .navigationTitle("Socials")
-//            .navigationBarTitleDisplayMode(.inline)
-//            .refreshable { await checkConnections() }
-//            .onAppear {
-//                withAnimation(.easeOut(duration: 0.6)) {
-//                    isAnimating = true
-//                }
-//                bounceTrigger += 1
-//            }
-//            .task {
-//                await fetchUserData()
-//                await checkConnections()
-//            }
-//        }
-//    }
-//    
-//    @ViewBuilder
-//    func platformCard(id: String) -> some View {
-//        let isConnected = connectedPlatforms.contains(id)
-//        let assetName = platformAssets[id] ?? "link"
-//        
-//        HStack(spacing: 16) {
-//            // Icon
-//            ZStack {
-//                RoundedRectangle(cornerRadius: 12, style: .continuous)
-//                    .fill(Color.brandPurple.opacity(0.1))
-//                Image(assetName)
-//                    .resizable()
-//                    .renderingMode(.template)
-//                    .aspectRatio(contentMode: .fit)
-//                    .frame(width: 24, height: 24)
-//                    .foregroundColor(.brandPurple)
-//            }
-//            .frame(width: 48, height: 48)
-//            
-//            VStack(alignment: .leading, spacing: 2) {
-//                Text(formatPlatformName(id))
-//                    .font(.system(.headline, design: .rounded))
-//                
-//                HStack(spacing: 4) {
-//                    if isConnected {
-//                        AnimatedCheckmark()
-//                        Text("Linked")
-//                            .font(.caption2).bold()
-//                            .foregroundColor(.brandPurple)
-//                    } else {
-//                        Text("Not Linked")
-//                            .font(.caption2)
-//                            .foregroundColor(.secondary)
-//                    }
-//                }
-//            }
-//            
-//            Spacer()
-//            
-//            // Fixed-width Button for consistency
-//            Button {
-//                Haptics.selection()
-//                isConnected ? disconnectPlatform(id) : startSocialLogin(platform: id)
-//            } label: {
-//                Text(isConnected ? "Disconnect" : "Connect")
-//                    .font(.system(size: 13, weight: .bold, design: .rounded))
-//                    .frame(width: 90) // Standardized width
-//                    .foregroundColor(isConnected ? .roseRed : .white)
-//                    .padding(.vertical, 8)
-//                    .background(isConnected ? Color.roseRed.opacity(0.1) : Color.brandPurple)
-//                    .clipShape(Capsule())
-//                    .overlay(
-//                        Capsule()
-//                            .stroke(isConnected ? Color.roseRed.opacity(0.3) : Color.clear, lineWidth: 1)
-//                    )
-//            }
-//        }
-//        .padding()
-//        .background(
-//            RoundedRectangle(cornerRadius: 20, style: .continuous)
-//                .fill(.ultraThinMaterial)
-//                .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
-//        )
-//    }
-//
-//    // MARK: - Logic (Unchanged)
-//
-//    func checkConnections() async {
-//        guard !userId.isEmpty, let url = URL(string: "\(backendBaseUrl)/accounts/\(userId)") else { return }
-//        do {
-//            let (data, _) = try await URLSession.shared.data(from: url)
-//            if let list = try? JSONDecoder().decode([String].self, from: data) {
-//                let newSet = Set(list)
-//                await MainActor.run {
-//                    if newSet.count > self.connectedPlatforms.count { Haptics.success() }
-//                    withAnimation(.spring()) { self.connectedPlatforms = newSet }
-//                }
-//            }
-//        } catch { print("Connection check failed") }
-//    }
-//    
-//    func startSocialLogin(platform: String) {
-//        guard let authURL = URL(string: "\(backendBaseUrl)/\(platform)/login?user_id=\(userId)") else { return }
-//        let session = ASWebAuthenticationSession(url: authURL, callbackURLScheme: "xpost") { _, _ in
-//            Task {
-//                try? await Task.sleep(nanoseconds: 1_000_000_000)
-//                await checkConnections()
-//            }
-//        }
-//        session.presentationContextProvider = authPresenter
-//        self.authSession = session
-//        session.start()
-//    }
-//
-//    func disconnectPlatform(_ platform: String) {
-//        guard let url = URL(string: "\(backendBaseUrl)/disconnect/\(platform)?user_id=\(userId)") else { return }
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "DELETE"
-//        URLSession.shared.dataTask(with: request) { _, res, _ in
-//            if (res as? HTTPURLResponse)?.statusCode == 200 { Task { await checkConnections() } }
-//        }.resume()
-//    }
-//
-//    func fetchUserData() async {
-//        if let session = try? await supabase.auth.session {
-//            self.userId = session.user.id.uuidString
-//        }
-//    }
-//    
-//    func formatPlatformName(_ id: String) -> String {
-//        id == "tiktok" ? "TikTok" : id.capitalized
-//    }
-//}
 
 
 struct SocialConnectView: View {
+    @Binding var activeTab: Tab
     @State private var userId: String = ""
     @State private var connectedPlatforms: Set<String> = []
     @State private var authSession: ASWebAuthenticationSession?
     @State private var authPresenter = WebAuthPresenter()
     @State private var isAnimating = false
     @State private var bounceTrigger = 0
-   
+    @State private var userTier: String = "loading"
+    @State private var isShowingUpgradeSheet: Bool = false
+
+    private var connectionLimit: Int {
+        switch userTier.lowercased() {
+        case "pro": return 5
+        case "elite": return 20
+        default: return 3
+        }
+    }
     
     let backendBaseUrl = "https://youlanda-migratory-trevor.ngrok-free.dev"
     
@@ -354,6 +156,13 @@ struct SocialConnectView: View {
             .task {
                 await fetchUserData()
                 await checkConnections()
+                self.userTier = await getCurrentTier()
+                    
+            }
+            .sheet(isPresented: $isShowingUpgradeSheet) {
+                UpgradeTierView(currentTier: userTier, activeTab: $activeTab)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -362,6 +171,8 @@ struct SocialConnectView: View {
     func platformCard(id: String) -> some View {
         let isConnected = connectedPlatforms.contains(id)
         let assetName = platformAssets[id] ?? "link"
+        let isLimitReached = connectedPlatforms.count >= connectionLimit
+        let canLink = isConnected || !isLimitReached
         
         HStack(spacing: 16) {
             // Icon Style: Clean & Modern
@@ -400,14 +211,25 @@ struct SocialConnectView: View {
             
             Button {
                 Haptics.selection()
-                isConnected ? disconnectPlatform(id) : startSocialLogin(platform: id)
+                if isConnected {
+                    disconnectPlatform(id)
+                } else if !isLimitReached {
+                    startSocialLogin(platform: id)
+                } else {
+                    // Logic for when they are over the limit
+                  
+                    isShowingUpgradeSheet = true
+                }
+//                isConnected ? disconnectPlatform(id) : startSocialLogin(platform: id)
             } label: {
                 Text(isConnected ? "Unlink" : "Link")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .frame(width: 80)
                     .padding(.vertical, 8)
-                    .background(isConnected ? Color.clear : Color.brandPurple)
-                    .foregroundColor(isConnected ? .secondary : .white)
+                    //.background(isConnected ? Color.clear : Color.brandPurple)
+                    //.foregroundColor(isConnected ? .secondary : .white)
+                    .background(!isConnected && isLimitReached ? Color.secondary.opacity(0.2) : (isConnected ? Color.clear : Color.brandPurple))
+                                .foregroundColor(isConnected || (!isConnected && isLimitReached) ? .secondary : .white)
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
@@ -493,5 +315,86 @@ struct SocialConnectView: View {
         id == "youtube" ? "YouTube":
         id == "linkedin" ? "LinkedIn":
         id.capitalized
+    }
+}
+
+struct UpgradeTierView: View {
+    
+    let currentTier: String
+    @Binding var activeTab: Tab // Add this
+    @Environment(\.dismiss) var dismiss
+    
+    private var tierDisplayName: String {
+        switch currentTier.lowercased() {
+        case "pro": return "Creator"
+        case "elite": return "Elite"
+        default: return "Free"
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 25) {
+            Spacer()
+            
+            // Icon
+            Image(systemName: "bolt.shield.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(LinearGradient(colors: [.brandPurple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+            
+            VStack(spacing: 10) {
+                Text("Upgrade Your Reach")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                
+                Text("You've reached the limit for the \(tierDisplayName) plan. Unlock more platform slots and premium features.")
+                    .font(.system(size: 16, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 30)
+            }
+            
+            
+            // CTA Button
+            Button {
+                // Trigger your RevenueCat or StoreKit logic here
+                dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        activeTab = .account
+                    }
+                }
+            } label: {
+                Text("View Pro Plans")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.brandPurple)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            .padding(.horizontal)
+            
+            Button("Maybe Later") {
+                dismiss()
+            }
+            .font(.system(size: 14, weight: .medium))
+            .foregroundColor(.secondary)
+            
+            Spacer()
+        }
+        .padding(.top)
+    }
+}
+
+struct FeatureRow: View {
+    let icon: String
+    let text: String
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(.brandPurple)
+                .frame(width: 24)
+            Text(text)
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+        }
     }
 }
