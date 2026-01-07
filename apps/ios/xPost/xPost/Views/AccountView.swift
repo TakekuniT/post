@@ -15,7 +15,7 @@ struct AccountView: View {
     @State private var userEmail: String = "Loading..."
     @State private var userName: String = "User"
     @State private var userId: String = ""
-    @State private var userTier: String = "Free"
+    @State private var userTier: String = "loading"
     
     @State private var isAnimating = false
     @State private var showDeleteAlert = false
@@ -123,6 +123,7 @@ struct AccountView: View {
             }
             .task {
                 await fetchUserData()
+                self.userTier = await getCurrentTier()
             }
         }
     }
@@ -165,7 +166,7 @@ struct AccountView: View {
                     perkRow(icon: "checkmark.seal.fill", text: "No Watermarks")
                     perkRow(icon: "tag.fill", text: "Branded Captions", isLimit: true)
                     perkRow(icon: "network", text: "Post to 5 Platforms", isLimit: true)
-                } else {
+                } else if userTier.lowercased() == "elite" {
                     // Elite Tier
                     perkRow(icon: "infinity", text: "Unlimited Posts")
                     perkRow(icon: "calendar.badge.plus", text: "Full Scheduling Access")
