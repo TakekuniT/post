@@ -483,9 +483,44 @@ struct AccountView: View {
     }
 
     func deleteAccount() {
-        Haptics.success()
-        print("Deleting account...")
+        Haptics.selection()
+        
+        Task {
+            do {
+                // 1. Ensure you have a valid session
+                guard let session = try? await supabase.auth.session else {
+                    print("Error: User is not logged in.")
+                    return
+                }
+
+                // 2. Pass the token explicitly in the headers
+                // Note: Use the function name exactly as it appears in Supabase dashboard
+                let response = try await supabase.functions.invoke(
+                    "delete-user",
+                    options: .init(
+                        method: .post,
+                        headers: [
+                            "Authorization": "Bearer \(session.accessToken)"
+                        ]
+                    )
+                )
+                
+                print("Successfully deleted account.")
+                
+                // 3. Clean up locally
+                try await supabase.auth.signOut()
+                
+                await MainActor.run {
+                    Haptics.success()
+                    // self.isAuthenticated = false (Reset your app state)
+                }
+                
+            } catch {
+                print("Delete Account Error: \(error.localizedDescription)")
+            }
+        }
     }
+    
 }
 //enum PlanTier: String, CaseIterable {
 //    case free, pro, elite
