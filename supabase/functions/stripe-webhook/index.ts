@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
         current_period_end: null,
         updated_at: new Date().toISOString(),
       })
-      .eq("stripe_customer_id", stripeCustomerId);
+      .eq("stripe_subscription_id", subscription.id);
 
     if (error) {
       console.error(

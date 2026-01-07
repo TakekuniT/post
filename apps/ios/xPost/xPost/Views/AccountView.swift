@@ -41,7 +41,8 @@ struct AccountView: View {
     @State private var isAnimating = false
     @State private var showDeleteAlert = false
     
-    @State private var isProcessingPayment = false
+    //@State private var isProcessingPayment = false
+    @State private var processingTier: String? = nil
     @State private var checkoutURL: URL?
     @State private var showSafari = false
     
@@ -115,6 +116,13 @@ struct AccountView: View {
                                 .scrollTargetLayout()
                             }
                             .scrollTargetBehavior(.viewAligned)
+                            
+                            Text("Once a subscription is canceled, your card will no longer be charged and the plan will be reverted to the Starter tier at the end of the billing period.")
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary.opacity(0.8))
+                                    .padding(.horizontal, 32)
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
                         }
 
                         VStack(spacing: 12) {
@@ -368,13 +376,14 @@ struct AccountView: View {
                     if cardWeight < currentWeight {
                         // DOWNGRADE LOGIC: Open the Customer Portal
                         Haptics.selection()
+                        // Replace the URL below with the "test link" you just activated in Stripe
                         if let portalURL = URL(string: "https://billing.stripe.com/p/login/test_fZu14m7W657s7Qwex11Nu00") {
                             UIApplication.shared.open(portalURL)
                         }
                     } else {
                         Haptics.success()
                         Task {
-                            await MainActor.run { isProcessingPayment = true }
+                            await MainActor.run { processingTier = plan.rawValue }
                             do {
                                 if let url = try await StripeService.shared.createCheckoutSession(tier: plan.rawValue) {
                                     await MainActor.run {
@@ -385,14 +394,16 @@ struct AccountView: View {
                             } catch {
                                 print("Stripe Error: \(error.localizedDescription)")
                             }
-                            await MainActor.run { isProcessingPayment = false }
+                            await MainActor.run { processingTier = nil }
                         }
                     }
                     
                 }
             } label: {
-                if isProcessingPayment && !isCurrentPlan {
-                    ProgressView().tint(.white)
+                if processingTier == plan.rawValue {
+                    ProgressView()
+                        .tint(Color.brandPurple)
+                        .frame(maxWidth: .infinity)
                 } else {
                     Text(buttonText(isCurrent: isCurrentPlan, currentWeight: currentWeight, cardWeight: cardWeight))
                         .font(.system(.callout, design: .rounded, weight: .bold))
@@ -407,7 +418,7 @@ struct AccountView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
-            .disabled(isProcessingPayment)
+            .disabled(processingTier != nil)
         }
         .padding(20)
         .frame(width: 280, height: 380)
