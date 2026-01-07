@@ -52,6 +52,7 @@ struct SocialConnectView: View {
     @State private var bounceTrigger = 0
     @State private var userTier: String = "loading"
     @State private var isShowingUpgradeSheet: Bool = false
+    @State private var selectedTooltipMessage: String? = nil
     
     
 
@@ -144,6 +145,58 @@ struct SocialConnectView: View {
                         Spacer(minLength: 100)
                     }
                 }
+                
+                // Background tap dismiss
+                if selectedTooltipMessage != nil {
+                    Color.white.opacity(0.001)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring()) {
+                                selectedTooltipMessage = nil
+                            }
+                        }
+                        .zIndex(90)
+                }
+
+                // Tooltip
+                if let message = selectedTooltipMessage {
+                    VStack {
+                        Spacer()
+
+                        HStack(spacing: 12) {
+                            Text(message)
+                                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+
+                            Button {
+                                withAnimation(.spring()) {
+                                    selectedTooltipMessage = nil
+                                }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .font(.system(size: 20))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.brandPurple.opacity(0.9))
+                        )
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 100)
+                    }
+                    .zIndex(100)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity.combined(with: .scale(scale: 0.9))
+                    ))
+                }
+
+                
+                
             }
             // Use an empty title to let the custom "Social Sync" hero text shine
             .navigationTitle("")
@@ -176,6 +229,18 @@ struct SocialConnectView: View {
         let isLimitReached = connectedPlatforms.count >= connectionLimit
         let canLink = isConnected || !isLimitReached
         
+        
+        let tooltipMessage: String? = {
+            switch id {
+            case "facebook":
+                return "Facebook account must be a Facebook Page, not personal profiles."
+            case "instagram":
+                return "Instagram account must be a Professional account linked to a Facebook Page."
+            default:
+                return nil
+            }
+        }()
+
         HStack(spacing: 16) {
             // Icon Style: Clean & Modern
             ZStack {
@@ -192,9 +257,24 @@ struct SocialConnectView: View {
             .frame(width: 44, height: 44)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(formatPlatformName(id))
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                
+                HStack(spacing: 6) {
+                    Text(formatPlatformName(id))
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    if let tooltipMessage {
+                        Button {
+                            Haptics.selection()
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                selectedTooltipMessage = tooltipMessage
+                            }
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.caption)
+                                .foregroundColor(.brandPurple.opacity(0.6))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+               
                 if isConnected {
                     HStack(spacing: 4) {
                         AnimatedCheckmark()
