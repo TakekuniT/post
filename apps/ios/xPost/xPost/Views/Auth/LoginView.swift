@@ -12,6 +12,10 @@ struct LoginView: View {
     @State private var isLoading = false
     @Binding var isAuthenticated: Bool
     
+    @State private var errorMessage = ""
+    @State private var showAlert = false
+    @State private var shakeOffset: CGFloat = 0
+    
     // Animation state
     @State private var animationPhase: Int = 0
     
@@ -65,6 +69,12 @@ struct LoginView: View {
 
                         // PHASE 3: Action Buttons
                         VStack(spacing: 16) {
+                            if !errorMessage.isEmpty {
+                                Text(errorMessage)
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundColor(Color.roseRed)
+                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            }
                             Button {
                                 login()
                             } label: {
@@ -148,8 +158,26 @@ struct LoginView: View {
             }
         }
     }
+    
+    func shakeUI() {
+        withAnimation(.default) {
+            shakeOffset = 10
+        }
+        withAnimation(.default.delay(0.1)) {
+            shakeOffset = -10
+        }
+        withAnimation(.default.delay(0.2)) {
+            shakeOffset = 0
+        }
+    }
 
     func login() {
+        if email.isEmpty || password.isEmpty {
+            errorMessage = "Please enter both email and password."
+            showAlert = true
+            Haptics.error() // If you have an error haptic
+            return
+        }
         Haptics.selection()
         Task {
             isLoading = true
@@ -160,6 +188,21 @@ struct LoginView: View {
             } catch {
                 print("Error: \(error.localizedDescription)")
                 // Add error haptic here if you have one
+                let errorString = error.localizedDescription.lowercased()
+                            
+                if errorString.contains("invalid login credentials") {
+                    errorMessage = "Incorrect email or password."
+                } else if errorString.contains("email not confirmed") {
+                    errorMessage = "Please verify your email before signing in."
+                } else if errorString.contains("user not found") {
+                    errorMessage = "No account found with this email."
+                } else {
+                    errorMessage = error.localizedDescription
+                }
+                
+                showAlert = true
+                Haptics.error()
+                print("Login Error: \(error)")
             }
             isLoading = false
         }

@@ -72,9 +72,7 @@ Deno.serve(async (req) => {
       .update({
         tier: tier,
         status: subscription.status,
-        current_period_end: new Date(
-          subscription.current_period_end * 1000
-        ).toISOString(),
+        current_period_end: currentPeriodEnd,
         updated_at: new Date().toISOString(),
       })
       .eq("stripe_subscription_id", subscription.id);
@@ -123,7 +121,7 @@ Deno.serve(async (req) => {
       .from("subscriptions")
       .update({
         status: "active",
-        current_period_end: period,
+        current_period_end: periodEnd,
         updated_at: new Date().toISOString(),
       })
       .eq("stripe_subscription_id", invoice.subscription);
