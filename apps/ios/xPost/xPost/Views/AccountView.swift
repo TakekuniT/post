@@ -73,6 +73,22 @@ struct AccountView: View {
                                startPoint: .top,
                                endPoint: .bottom)
                     .ignoresSafeArea()
+                
+                
+                
+                if selectedPerkMessage != nil {
+                    Color.white.opacity(0.001) // Using 0.001 makes it "hittable" but invisible
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring()) {
+                                selectedPerkMessage = nil
+                            }
+                        }
+                        .zIndex(90) // Ensure this is below the message (100)
+                }
+                
+                
+                
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 25) {
@@ -201,11 +217,11 @@ struct AccountView: View {
                 self.userTier = await getCurrentTier()
             }
         }
-        .onTapGesture {
-            if selectedPerkMessage != nil {
-                withAnimation { selectedPerkMessage = nil }
-            }
-        }
+//        .onTapGesture {
+//            if selectedPerkMessage != nil {
+//                withAnimation { selectedPerkMessage = nil }
+//            }
+//        }
         .sheet(isPresented: $showSafari) {
             if let url = checkoutURL {
                 SafariView(url: url)
