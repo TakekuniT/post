@@ -160,17 +160,44 @@ class TikTokService:
             print(f"DEBUG: Starting TikTok Upload for {caption}")
             token = TikTokService.get_valid_token(user_id)
             
-            video_size = os.path.getsize(file_path)
+
+            ## TESTING
             
-            # For files under 64MB, ALWAYS use 1 chunk. 
-            # This eliminates math errors with TikTok's validator.
-            if video_size < 64 * 1024 * 1024:
+            video_size = os.path.getsize(file_path)
+
+            # TikTok hard preference
+            SINGLE_CHUNK_THRESHOLD = 64 * 1024 * 1024  # 64MB
+            MIN_CHUNK = 5 * 1024 * 1024  # 5MB
+
+            if video_size < SINGLE_CHUNK_THRESHOLD:
                 chunk_size = video_size
                 total_chunks = 1
             else:
-                # For large files, use 10MB chunks
-                chunk_size = 10 * 1024 * 1024
+                chunk_size = 10 * 1024 * 1024  # 10MB safe value
                 total_chunks = math.ceil(video_size / chunk_size)
+
+            # Explicit ints (TikTok is strict)
+            video_size = int(video_size)
+            chunk_size = int(chunk_size)
+            total_chunks = int(total_chunks)
+
+            print(f"[TikTok Upload] size={video_size} chunk={chunk_size} count={total_chunks}")
+
+
+
+            ## TESTING
+
+            # video_size = os.path.getsize(file_path)
+            
+            # # For files under 64MB, ALWAYS use 1 chunk. 
+            # # This eliminates math errors with TikTok's validator.
+            # if video_size < 64 * 1024 * 1024:
+            #     chunk_size = video_size
+            #     total_chunks = 1
+            # else:
+            #     # For large files, use 10MB chunks
+            #     chunk_size = 10 * 1024 * 1024
+            #     total_chunks = math.ceil(video_size / chunk_size)
 
             print(f"[Upload] File: {video_size} | Chunk: {chunk_size} | Count: {total_chunks}")
 

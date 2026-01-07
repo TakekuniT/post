@@ -5,15 +5,23 @@ from services.instagram import InstagramService
 from services.facebook import FacebookService
 from services.linkedin import LinkedInService
 from utils.db_client import supabase
+from services.subscription_service import SubscriptionService
 
 class PostManager:
     @staticmethod
-    async def distribute_video(post_id: str,user_id: str, file_path: str, caption: str, description: str, platforms: list):
+    async def distribute_video(post_id: str, user_id: str, file_path: str, caption: str, description: str, platforms: list):
         """
         Coordinates multi-platform uploads.
         """
         tasks = []
+        user_perms = await SubscriptionService.get_user_permissions(user_id, supabase)
+        requested_platforms = len(platforms)
+        if requested_platforms > user_perms["max_platforms"]:
+            return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
         
+        if not user_perms["non_branded_caption"]:
+            caption += "\nSent via UniPost on iOS #unipost #poweredbyunipost"
+
         if "youtube" in platforms:
             tasks.append(YouTubeService.upload_video(user_id, file_path, caption, description))
             
