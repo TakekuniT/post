@@ -253,6 +253,15 @@ struct AccountView: View {
                     Image(systemName: "info.circle")
                         .font(.caption)
                         .foregroundColor(.brandPurple.opacity(0.6))
+                        .contentShape(Rectangle()) // Makes the whole padded area tappable
+                        .highPriorityGesture(
+                            TapGesture().onEnded {
+                                Haptics.selection()
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectedPerkMessage = message
+                                }
+                            }
+                        )
                 }
                 .buttonStyle(.plain)
             }
@@ -297,20 +306,53 @@ struct AccountView: View {
             
             VStack(alignment: .leading, spacing: 10) {
                 if plan == .free {
-                    perkRow(icon: "number.circle.fill", text: "10 Posts per Month", isLimit: true)
-                    perkRow(icon: "clock.badge.exclamationmark", text: "No Scheduling (Instant only)", isLimit: true)
-                    perkRow(icon: "square.dashed", text: "Watermarked Videos", isLimit: true)
-                    perkRow(icon: "tag.fill", text: "Branded Captions", isLimit: true)
-                    perkRow(icon: "network", text: "Post to 3 Platforms",
-                        isLimit: true)
-                } else if userTier.lowercased() == "pro" {
+                    perkRow(
+                        icon: "number.circle.fill",
+                        text: "10 Posts per Month",
+                        isLimit: true,
+                        detailMessage: "The Starter plan allows for 10 total posts across all platforms every 30 days.")
+                    perkRow(
+                        icon: "clock.badge.exclamationmark",
+                        text: "No Scheduled Posts",
+                        isLimit: true,
+                        detailMessage: "Scheduling is a premium feature. Starter users can only publish posts immediately."
+                    )
+                    perkRow(
+                        icon: "square.dashed",
+                        text: "Watermarked Videos",
+                        isLimit: true,
+                        detailMessage: "Videos exported on the free tier include a small watermark."
+                    )
+                    perkRow(
+                        icon: "tag.fill",
+                        text: "Branded Captions",
+                        isLimit: true,
+                        detailMessage: "Captions on the free tier include 'Sent via UniPost on iOS' with UniPost tags to support our community."
+                    )
+                    perkRow(
+                        icon: "network",
+                        text: "Post to 3 Platforms",
+                        isLimit: true,
+                        detailMessage: "Connect up to 3 social accounts."
+                    )
+
+                } else if plan == .pro {
                     perkRow(icon: "infinity", text: "Unlimited Posts")
                     perkRow(icon: "calendar.badge.plus", text: "Full Scheduling Access")
                     perkRow(icon: "checkmark.seal.fill", text: "No Watermarks")
-                    perkRow(icon: "tag.fill", text: "Branded Captions", isLimit: true)
-                    perkRow(icon: "network", text: "Post to 5 Platforms", isLimit: true)
-                } else if userTier.lowercased() == "elite" {
-                    // Elite Tier
+                    perkRow(
+                        icon: "tag.fill",
+                        text: "Branded Captions",
+                        isLimit: true,
+                        detailMessage: "Captions on the free tier includes 'Sent via UniPost on iOS' with UniPost tags to support our community."
+                    )
+                    perkRow(
+                        icon: "network",
+                        text: "Post to 5 Platforms",
+                        isLimit: true,
+                        detailMessage: "Connect up to 3 social accounts."
+                    )
+                } else {
                     perkRow(icon: "infinity", text: "Unlimited Posts")
                     perkRow(icon: "calendar.badge.plus", text: "Full Scheduling Access")
                     perkRow(icon: "sparkles", text: "No Watermarks or Branding")
