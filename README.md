@@ -39,3 +39,14 @@ Go to https://ipv4.icanhazip.com to find your public IP address.
 
 Paste the public IP address to the lt url.
 
+# Updating create-checkout.ts
+
+Must run this command every time code is updated:
+
+supabase functions deploy create-checkout --no-verify-jwt --use-api
+
+# Updating scheduler.py
+
+After updating scheduler.py, run this command again:
+
+python -m services.scheduler
