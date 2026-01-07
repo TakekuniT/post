@@ -63,3 +63,35 @@ class PostService {
         return try decoder.decode([PostModel].self, from: response.data)
     }
 }
+
+
+func fetchMonthlyPostCount() async throws -> Int {
+    let session = try await supabase.auth.session
+    let userId = session.user.id
+    
+    // Get the first day of the current month at 00:00:00
+    let calendar = Calendar.current
+    let components = calendar.dateComponents([.year, .month], from: Date())
+    guard let startOfMonth = calendar.date(from: components) else { return 0 }
+    
+    // Format the date to ISO8601 for Supabase
+    let formatter = ISO8601DateFormatter()
+    let dateString = formatter.string(from: startOfMonth)
+
+    // Query with a count option to avoid downloading all post data
+    let response = try await supabase
+        .from("posts")
+        .select(id: .count) // Only fetch the count, not the full rows
+        .eq("user_id", value: userId)
+        .gte("created_at", value: dateString)
+        .execute()
+    
+    // response.data is usually a list of counts or a single integer depending on configuration
+    // If you are using standard Supabase Swift returns:
+    return try JSONDecoder().decode([CountResponse].self, from: response.data).first?.count ?? 0
+}
+
+// Helper struct for decoding the count response
+struct CountResponse: Codable {
+    let count: Int
+}
