@@ -9,13 +9,32 @@
 import SwiftUI
 import AuthenticationServices
 
-
+enum PlanTier: String, CaseIterable {
+    case free, pro, elite
+    
+    var displayName: String {
+        switch self {
+        case .free: return "Starter"
+        case .pro: return "Creator"
+        case .elite: return "Agency"
+        }
+    }
+    
+    var price: String {
+        switch self {
+        case .free: return "Free"
+        case .pro: return "$9.99/mo"
+        case .elite: return "$29.99/mo"
+        }
+    }
+}
 
 struct AccountView: View {
     @State private var userEmail: String = "Loading..."
     @State private var userName: String = "User"
     @State private var userId: String = ""
     @State private var userTier: String = "loading"
+    @State private var selectedPerkMessage: String? = nil
     
     @State private var isAnimating = false
     @State private var showDeleteAlert = false
@@ -29,6 +48,7 @@ struct AccountView: View {
         default: return "Starter"
         }
     }
+    
 
     private var planPrice: String {
         switch userTier.lowercased() {
@@ -78,10 +98,32 @@ struct AccountView: View {
                         .offset(y: isAnimating ? 0 : 15)
 
                         // MARK: - Subscription Card
-                        subscriptionCard
-                            .opacity(isAnimating ? 1 : 0)
-                            .offset(y: isAnimating ? 0 : 20)
-                            .animation(.spring().delay(0.1), value: isAnimating)
+//                        subscriptionCard
+//                            .opacity(isAnimating ? 1 : 0)
+//                            .offset(y: isAnimating ? 0 : 20)
+//                            .animation(.spring().delay(0.1), value: isAnimating)
+                        
+                        // MARK: - Tier Carousel
+                        VStack(alignment: .leading, spacing: 15) {
+                            Text("Subscription Plans")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 24)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(PlanTier.allCases, id: \.self) { plan in
+                                        tierCard(for: plan)
+                                    }
+                                }
+                                .padding(.horizontal, 24)
+                                .scrollTargetLayout()
+                            }
+                            .scrollTargetBehavior(.viewAligned)
+                        }
+
+                            
+                           
 
                         // MARK: - Settings Section
                         VStack(spacing: 12) {
@@ -107,6 +149,55 @@ struct AccountView: View {
                     }
                     .padding(.bottom, 30)
                 }
+                
+                
+                
+            
+                if let message = selectedPerkMessage {
+                    VStack {
+                        Spacer() // Pushes it to the bottom area
+                        
+                        HStack(spacing: 12) {
+                            Text(message)
+                                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                            
+                            Button {
+                                withAnimation(.spring()) { selectedPerkMessage = nil }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .font(.system(size: 20))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.brandPurple.opacity(0.9))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 10)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 100) // Changed from 50 to 100 to move it UP
+                    }
+                    .zIndex(100) // This is CRITICAL
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity.combined(with: .scale(scale: 0.9))
+                    ))
+                }
+                
+                
+                
+                
+                
+                
             }
             .navigationTitle("")
             .navigationBarHidden(true)
@@ -125,7 +216,22 @@ struct AccountView: View {
                 await fetchUserData()
                 self.userTier = await getCurrentTier()
             }
+            
+            
+          
+
+            
+            
+            
+            
+            
         }
+        .onTapGesture {
+                    // Dismiss tooltip if user taps anywhere else on the screen
+                    if selectedPerkMessage != nil {
+                        withAnimation { selectedPerkMessage = nil }
+                    }
+                }
     }
 
     // MARK: - Subcomponents
@@ -252,30 +358,209 @@ struct AccountView: View {
     
     
     @ViewBuilder
-    private func perkRow(icon: String, text: String, isLimit: Bool = false) -> some View {
+    private func perkRow(icon: String, text: String, isLimit: Bool = false, detailMessage: String? = nil) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                // Use purple for active perks, gray for limits/branding
                 .foregroundColor(isLimit ? .secondary.opacity(0.8) : .brandPurple)
                 .frame(width: 24)
             
             Text(text)
-                .font(.system(size: 14,  weight: .medium, design: .rounded))
+                .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundColor(isLimit ? .secondary : .primary)
                 
             Spacer()
             
-            if isLimit {
-                Image(systemName: "info.circle")
-                    .font(.caption2)
-                    .foregroundColor(.secondary.opacity(0.5))
+            if isLimit, let message = detailMessage {
+                Button {
+                    Haptics.selection() // Gentle haptic for "info"
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selectedPerkMessage = message
+                    }
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.caption)
+                        .foregroundColor(.brandPurple.opacity(0.6))
+                        .contentShape(Rectangle()) // Makes it easier to tap
+                }
+                .buttonStyle(.plain)
+                .highPriorityGesture(TapGesture().onEnded {
+                        // This forces the tap to be recognized even if the ScrollView is active
+                        Haptics.selection()
+                        withAnimation(.spring()) {
+                            selectedPerkMessage = message
+                        }
+                    })
             }
         }
     }
     
     
     
+    @ViewBuilder
+    private func tierCard(for plan: PlanTier) -> some View {
+        let isCurrentPlan = userTier.lowercased() == plan.rawValue
+        let tierWeights: [String: Int] = ["free": 0, "pro": 1, "elite": 2]
+        let currentWeight = tierWeights[userTier.lowercased()] ?? 0
+        let cardWeight = tierWeights[plan.rawValue] ?? 0
+        
+        VStack(alignment: .leading, spacing: 16) {
+            // Status Badge
+            HStack {
+                Text(plan.displayName)
+                    .font(.caption.bold())
+                    .foregroundColor(isCurrentPlan ? .white : .brandPurple)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(isCurrentPlan ? Color.brandPurple : Color.brandPurple.opacity(0.1))
+                    .clipShape(Capsule())
+                
+                Spacer()
+                
+                if isCurrentPlan {
+                    Text("Current")
+                        .font(.caption2.bold())
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(plan.price)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                Text("Billed monthly")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Divider().background(Color.brandPurple.opacity(0.2))
+            
+            // Features
+            VStack(alignment: .leading, spacing: 10) {
+                if plan == .free {
+                    perkRow(
+                        icon: "number.circle.fill",
+                        text: "10 Posts per Month",
+                        isLimit: true,
+                        detailMessage: "The Starter plan allows for 10 total posts across all platforms every 30 days.")
+                    perkRow(
+                        icon: "clock.badge.exclamationmark",
+                        text: "No Scheduled Posts",
+                        isLimit: true,
+                        detailMessage: "Scheduling is a premium feature. Starter users can only publish posts immediately."
+                    )
+                    perkRow(
+                        icon: "square.dashed",
+                        text: "Watermarked Videos",
+                        isLimit: true,
+                        detailMessage: "Videos exported on the free tier include a small watermark."
+                    )
+                    perkRow(
+                        icon: "tag.fill",
+                        text: "Branded Captions",
+                        isLimit: true,
+                        detailMessage: "Captions on the free tier include 'Sent via UniPost on iOS' with UniPost tags to support our community."
+                    )
+                    perkRow(
+                        icon: "network",
+                        text: "Post to 3 Platforms",
+                        isLimit: true,
+                        detailMessage: "Connect up to 3 social accounts."
+                    )
+
+                } else if plan == .pro {
+                    perkRow(icon: "infinity", text: "Unlimited Posts")
+                    perkRow(icon: "calendar.badge.plus", text: "Full Scheduling Access")
+                    perkRow(icon: "checkmark.seal.fill", text: "No Watermarks")
+                    perkRow(
+                        icon: "tag.fill",
+                        text: "Branded Captions",
+                        isLimit: true,
+                        detailMessage: "Captions on the free tier includes 'Sent via UniPost on iOS' with UniPost tags to support our community."
+                    )
+                    perkRow(
+                        icon: "network",
+                        text: "Post to 5 Platforms",
+                        isLimit: true,
+                        detailMessage: "Connect up to 3 social accounts."
+                    )
+                } else {
+                    perkRow(icon: "infinity", text: "Unlimited Posts")
+                    perkRow(icon: "calendar.badge.plus", text: "Full Scheduling Access")
+                    perkRow(icon: "sparkles", text: "No Watermarks or Branding")
+                    perkRow(icon: "globe", text: "All Platforms Enabled")
+                    perkRow(icon: "bolt.fill", text: "Priority Support")
+                }
+            }
+            
+            Spacer(minLength: 20)
+            
+            // Action Button
+            
+            
+            Button {
+                if !isCurrentPlan {
+                    Haptics.success()
+                    // Stripe Logic here
+                }
+            } label: {
+                Text(buttonText(isCurrent: isCurrentPlan, currentWeight: currentWeight, cardWeight: cardWeight))
+                    .font(.system(.callout, design: .rounded, weight: .bold))
+                    .foregroundColor(isCurrentPlan ? .brandPurple : .white) // Purple text for current, White for actions
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(isCurrentPlan ? Color.clear : Color.brandPurple) // Clear for current, Purple for actions
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(isCurrentPlan ? Color.brandPurple.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            
+            
+            
+            
+//            Button {
+//                if !isCurrentPlan {
+//                    Haptics.success()
+//                    // Call your Stripe Checkout function here
+//                }
+//            } label: {
+//                Text(isCurrentPlan ? "Active Plan" : (plan == .free ? "Current" : "Upgrade"))
+//                    .font(.system(.callout, design: .rounded, weight: .bold))
+//                    .foregroundColor(isCurrentPlan ? .secondary : .white)
+//                    .frame(maxWidth: .infinity)
+//                    .padding(.vertical, 12)
+//                    .background(isCurrentPlan ? Color.clear : Color.brandPurple)
+//                    .overlay(
+//                        RoundedRectangle(cornerRadius: 12)
+//                            .stroke(isCurrentPlan ? Color.secondary.opacity(0.3) : Color.clear, lineWidth: 1)
+//                    )
+//                    .clipShape(RoundedRectangle(cornerRadius: 12))
+//            }
+//            .disabled(isCurrentPlan)
+        }
+        .padding(20)
+        .frame(width: 280, height: 380) // Fixed size for consistent swiping
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(isCurrentPlan ? Color.brandPurple.opacity(0.5) : Color.white.opacity(0.2), lineWidth: 2)
+                )
+        )
+        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+    }
+
+
+
+
+    
+    func buttonText(isCurrent: Bool, currentWeight: Int, cardWeight: Int) -> String {
+        if isCurrent { return "Current Plan" }
+        if cardWeight > currentWeight { return "Upgrade" }
+        return "Downgrade"
+    }
     
     
     
@@ -289,7 +574,5 @@ struct AccountView: View {
         print("Deleting account...")
     }
 }
-
-
 
 
