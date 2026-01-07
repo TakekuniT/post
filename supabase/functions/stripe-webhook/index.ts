@@ -7,6 +7,11 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 });
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
+function safeStripeDate(input?: number | null) {
+  if (!input || typeof input !== "number") return null;
+  return new Date(input * 1000).toISOString();
+}
+
 Deno.serve(async (req) => {
   const signature = req.headers.get("Stripe-Signature");
   const body = await req.text();
@@ -52,14 +57,20 @@ Deno.serve(async (req) => {
 
   /// 2. UPDATED LOGIC FOR TIER CHANGES
   if (event.type === "customer.subscription.updated") {
-    const subscription = event.data.object;
-    const priceId = subscription.items.data[0].price.id; // Get the CURRENT price
-    const tier = session.metadata.plan_tier;
+    const subscription = event.data.object as Stripe.Subscription;
+    const priceId = subscription.items.data[0].price.id;
+
+    // Map your Stripe Price IDs to your App Tiers
+    let tier = "free";
+    if (priceId === "price_1Smep4AcB7EeiXzBHav3u4rz") tier = "pro";
+    if (priceId === "price_1SmhKfAcB7EeiXzBNzMeQjhh") tier = "elite";
+
+    const currentPeriodEnd = safeStripeDate(subscription.current_period_end);
 
     const { error } = await supabaseAdmin
       .from("subscriptions")
       .update({
-        tier: tier, // This ensures the tier updates if they upgrade/downgrade
+        tier: tier,
         status: subscription.status,
         current_period_end: new Date(
           subscription.current_period_end * 1000
@@ -67,11 +78,13 @@ Deno.serve(async (req) => {
         updated_at: new Date().toISOString(),
       })
       .eq("stripe_subscription_id", subscription.id);
+
+    if (error) console.error("Update Error:", error.message);
   }
 
   // 3. HANDLE CANCELLATIONS (THE KILL SWITCH)
   if (event.type === "customer.subscription.deleted") {
-    const subscription = event.data.object;
+    const subscription = event.data.object as Stripe.Subscription;
     const stripeCustomerId = subscription.customer;
 
     // We find the user by their Stripe Customer ID and reset them
@@ -81,6 +94,7 @@ Deno.serve(async (req) => {
         tier: "free",
         status: "canceled",
         stripe_subscription_id: null, // Clear the sub ID since it's dead
+        current_period_end: null,
         updated_at: new Date().toISOString(),
       })
       .eq("stripe_customer_id", stripeCustomerId);
@@ -102,14 +116,14 @@ Deno.serve(async (req) => {
   if (event.type === "invoice.paid") {
     const invoice = event.data.object;
 
-    // FIX: Use the period_end directly from the invoice line items
-    const periodEnd = invoice.lines.data[0].period.end;
+    const line = invoice.lines?.data?.[0];
+    const periodEnd = safeStripeDate(line?.period?.end);
 
     await supabaseAdmin
       .from("subscriptions")
       .update({
         status: "active",
-        current_period_end: new Date(periodEnd * 1000).toISOString(),
+        current_period_end: period,
         updated_at: new Date().toISOString(),
       })
       .eq("stripe_subscription_id", invoice.subscription);

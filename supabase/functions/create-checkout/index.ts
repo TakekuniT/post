@@ -40,13 +40,38 @@ serve(async (req) => {
 
     const { tier } = await req.json();
 
+    // Downgrade protection
+    const { data: profile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select("tier")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) console.error("Profile Fetch Error:", profileError);
+
+    const tierWeights: Record<string, number> = {
+      free: 0,
+      pro: 1,
+      elite: 2,
+      loading: 0,
+    };
+    const currentWeight = tierWeights[(profile?.tier || "free").toLowerCase()];
+    const targetWeight = tierWeights[tier.toLowerCase()];
+
+    // Block if target is lower or equal to current (except free)
+    if (targetWeight <= currentWeight && currentWeight !== 0) {
+      throw new Error(
+        "You already have this plan or a higher one. Please manage downgrades via Apple Settings."
+      );
+    }
+
     let priceId = "";
     if (tier === "pro") priceId = "price_1Smep4AcB7EeiXzBHav3u4rz";
     if (tier === "elite") priceId = "price_1SmhKfAcB7EeiXzBNzMeQjhh";
 
     if (!priceId) throw new Error(`Invalid tier: ${tier}`);
     console.log("Creating Stripe Session with Metadata:", {
-      supabase_user_id: userId,
+      supabase_user_id: user.id,
       plan_tier: tier,
     });
     const session = await stripe.checkout.sessions.create({

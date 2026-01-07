@@ -365,21 +365,30 @@ struct AccountView: View {
             
             Button {
                 if !isCurrentPlan {
-                    Haptics.success()
-                    Task {
-                        await MainActor.run { isProcessingPayment = true }
-                        do {
-                            if let url = try await StripeService.shared.createCheckoutSession(tier: plan.rawValue) {
-                                await MainActor.run {
-                                    self.checkoutURL = url
-                                    self.showSafari = true
-                                }
-                            }
-                        } catch {
-                            print("Stripe Error: \(error.localizedDescription)")
+                    if cardWeight < currentWeight {
+                        // DOWNGRADE LOGIC: Open the Customer Portal
+                        Haptics.selection()
+                        if let portalURL = URL(string: "https://billing.stripe.com/p/login/test_fZu14m7W657s7Qwex11Nu00") {
+                            UIApplication.shared.open(portalURL)
                         }
-                        await MainActor.run { isProcessingPayment = false }
+                    } else {
+                        Haptics.success()
+                        Task {
+                            await MainActor.run { isProcessingPayment = true }
+                            do {
+                                if let url = try await StripeService.shared.createCheckoutSession(tier: plan.rawValue) {
+                                    await MainActor.run {
+                                        self.checkoutURL = url
+                                        self.showSafari = true
+                                    }
+                                }
+                            } catch {
+                                print("Stripe Error: \(error.localizedDescription)")
+                            }
+                            await MainActor.run { isProcessingPayment = false }
+                        }
                     }
+                    
                 }
             } label: {
                 if isProcessingPayment && !isCurrentPlan {

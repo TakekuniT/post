@@ -11,7 +11,7 @@ struct UserProfile: Codable {
     let id: UUID
     let username: String
     let email: String
-    let timeSaved: Int
+    let timeSaved: Int?
     let phoneNumber: String? 
     
     enum CodingKeys: String, CodingKey {

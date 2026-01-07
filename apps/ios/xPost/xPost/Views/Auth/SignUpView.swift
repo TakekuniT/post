@@ -289,7 +289,7 @@ struct SignUpView: View {
             } catch {
                 // Intercepting specific database errors
                 let description = error.localizedDescription.lowercased()
-                
+                print("FULL DB ERROR: \(error)")
                 withAnimation(.spring()) {
                     if description.contains("duplicate") || description.contains("already exists") || description.contains("unique") {
                         errorMessage = "This username is already taken."
