@@ -52,6 +52,8 @@ struct SocialConnectView: View {
     @State private var bounceTrigger = 0
     @State private var userTier: String = "loading"
     @State private var isShowingUpgradeSheet: Bool = false
+    
+    
 
     private var connectionLimit: Int {
         switch userTier.lowercased() {
@@ -265,6 +267,7 @@ struct SocialConnectView: View {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                     self.connectedPlatforms = newSet
                 }
+                enforceTierLimits()
             }
         } catch {
             print("Sync Error: \(error.localizedDescription)")
@@ -316,6 +319,30 @@ struct SocialConnectView: View {
         id == "linkedin" ? "LinkedIn":
         id.capitalized
     }
+    
+    
+    
+    func enforceTierLimits() {
+        let currentCount = connectedPlatforms.count
+        
+        if currentCount > connectionLimit {
+            let sortedPlatforms = connectedPlatforms.sorted() // Consistent order
+            let platformsToRemove = sortedPlatforms.suffix(currentCount - connectionLimit)
+            
+            for platformId in platformsToRemove {
+                print("Auto-disconnecting \(platformId) due to tier limit.")
+                disconnectPlatform(platformId)
+            }
+            
+            withAnimation(.spring()) {
+                self.connectedPlatforms = Set(sortedPlatforms.prefix(connectionLimit))
+            }
+            
+       
+        }
+    }
+    
+    
 }
 
 struct UpgradeTierView: View {
@@ -356,7 +383,9 @@ struct UpgradeTierView: View {
             // CTA Button
             Button {
                 // Trigger your RevenueCat or StoreKit logic here
+                Haptics.selection()
                 dismiss()
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                         activeTab = .account
@@ -374,6 +403,7 @@ struct UpgradeTierView: View {
             .padding(.horizontal)
             
             Button("Maybe Later") {
+                Haptics.selection()
                 dismiss()
             }
             .font(.system(size: 14, weight: .medium))
