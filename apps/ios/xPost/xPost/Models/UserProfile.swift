@@ -11,12 +11,11 @@ struct UserProfile: Codable {
     let id: UUID
     let username: String
     let email: String
-    let tier: String
-    let timeSaved: Int
+    let timeSaved: Int?
     let phoneNumber: String? 
     
     enum CodingKeys: String, CodingKey {
-        case id, username, email, tier
+        case id, username, email
         case timeSaved = "time_saved"
         case phoneNumber = "phone_number"
     }
