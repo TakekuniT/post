@@ -95,7 +95,7 @@ struct MainTabView: View {
         case .home:
             MainDashboardView()
         case .upload:
-            UploadView()
+            UploadView(activeTab: $activeTab)
         case .social:
             SocialConnectView(activeTab: $activeTab)
         case .account:
