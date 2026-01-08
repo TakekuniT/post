@@ -13,6 +13,8 @@ from utils.video_processor import VideoProcessor
 class PostManager:
     @staticmethod
     async def distribute_video(post_id: str, user_id: str, file_path: str, caption: str, description: str, platforms: list):
+        original_path = file_path # assume it looks like /videos/video.mp4
+        supabase_path = os.path.basename(file_path)
         try:
             """
             Coordinates multi-platform uploads.
@@ -25,6 +27,7 @@ class PostManager:
             if not user_perms.get("no_watermark", False):
                 watermarked_path = file_path.replace(".mp4", "_watermarked.mp4")
                 file_path = VideoProcessor.add_unipost_watermark(file_path, watermarked_path)
+                supabase_path = (os.path.basename(file_path)).replace("_watermarked.mp4", ".mp4")
                 print(f"DEBUG: Watermarking complete. New path: {file_path}")
             else:
                 print(f"DEBUG: Watermarking skipped. Path: {file_path}")
@@ -69,11 +72,12 @@ class PostManager:
             if os.path.exists(file_path):
                 os.remove(file_path)
                 print(f"DEBUG: Removed local file {file_path}")
+            if os.path.exists(original_path):
+                os.remove(original_path)
+                print(f"DEBUG: Removed local file {original_path}")
 
-            
-            file_name = os.path.basename(file_path)
             try:
-                supabase.storage.from_("videos").remove([file_name])
-                print(f"DEBUG: Removed {file_name} from Supabase Storage")
+                supabase.storage.from_("videos").remove([supabase_path])
+                print(f"DEBUG: Removed {supabase_path} from Supabase Storage")
             except Exception as e:
                 print(f"Cleanup Error: {str(e)}")
