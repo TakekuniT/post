@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Query, HTTPException, File, UploadFile, Form, BackgroundTasks
+from fastapi import APIRouter, Query, HTTPException, File, UploadFile, Form, BackgroundTasks, Security, Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import RedirectResponse, JSONResponse
 import requests
 import os
@@ -11,7 +12,9 @@ from moviepy import VideoFileClip
 import moviepy.video.fx as fix
 import asyncio  
 from utils.db_client import UserManager
-
+import json
+from jose import jwt, jwk # from python-jose
+from dotenv import load_dotenv
 
 router = APIRouter()
 # BASE_URL = "http://localhost:8000"
@@ -22,6 +25,15 @@ CLIENT_ID = os.environ.get("INSTAGRAM_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("INSTAGRAM_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("INSTAGRAM_REDIRECT_URI")
 APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
+
+
+load_dotenv()
+
+
+jwk_dict = json.loads(os.getenv("SUPABASE_JWK_SECRET"))
+actual_key = jwk_dict["keys"][0]
+public_key = jwk.construct(actual_key, algorithm="ES256")
+
 
 
 SCOPES = [
@@ -55,13 +67,25 @@ def test_instagram():
     return {"message": "Instagram route is working"}
 
 @router.get("/login")
-def instagram_login(user_id: str):
+#def instagram_login(user_id: str):
+def instagram_login(token: str):
+    try:
+        # Re-use our secure decoding logic
+        payload = jwt.decode(
+            token, 
+            public_key, 
+            algorithms=["ES256"], 
+            audience="authenticated"
+        )
+        verified_user_id = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
     auth_params = {
         "client_id": CLIENT_ID,
         "redirect_uri": REDIRECT_URI,
         "scope": ",".join(SCOPES),
         "response_type": "code",
-        "state": user_id
+        "state": verified_user_id #user_id
     }
     auth_url = "https://www.facebook.com/v18.0/dialog/oauth?" + urllib.parse.urlencode(auth_params)
     return RedirectResponse(auth_url)

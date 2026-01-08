@@ -6,26 +6,48 @@ from utils.oauth import OAuthManager
 from urllib.parse import quote
 import datetime
 from utils.db_client import UserManager
+from jose import jwt, jwk # from python-jose
+from dotenv import load_dotenv
+import json
+
+load_dotenv()
 
 router = APIRouter()
 oauth = OAuthManager()
 
 APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
 
+jwk_dict = json.loads(os.getenv("SUPABASE_JWK_SECRET"))
+actual_key = jwk_dict["keys"][0]
+public_key = jwk.construct(actual_key, algorithm="ES256")
 
 @router.get("/")
 def test_tiktok():
     return {"message": "TikTok route is working"}
 
 @router.get("/login")
-def tiktok_login(user_id: str):
+def tiktok_login(token: str):
     # 1. Generate PKCE pair
     verifier, challenge = oauth.generate_pkce_pair()
+
+    try:
+        # Re-use our secure decoding logic
+        payload = jwt.decode(
+            token, 
+            public_key, 
+            algorithms=["ES256"], 
+            audience="authenticated"
+        )
+        verified_user_id = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+    
     
     # 2. We need to store both the verifier AND the user_id. 
     # A common way is to combine them in the state (e.g., "verifier:user_id")
-    state_payload = f"{verifier}:{user_id}"
-    
+    #state_payload = f"{verifier}:{user_id}"
+    state_payload = f"{verifier}:{verified_user_id}"
+
     auth_url = (
         f"https://www.tiktok.com/v2/auth/authorize/"
         f"?client_key={os.getenv('TIKTOK_CLIENT_ID')}"

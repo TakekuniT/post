@@ -10,7 +10,10 @@ import requests
 import subprocess
 from utils.db_client import UserManager
 from datetime import datetime, timedelta
-
+from jose import jwt, jwk # from python-jose
+from dotenv import load_dotenv
+import json 
+load_dotenv()
 
 router = APIRouter()
 
@@ -18,6 +21,12 @@ CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("YOUTUBE_REDIRECT_URI")
 APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
+
+
+jwk_dict = json.loads(os.getenv("SUPABASE_JWK_SECRET"))
+actual_key = jwk_dict["keys"][0]
+public_key = jwk.construct(actual_key, algorithm="ES256")
+
 # In your YouTube login route file
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
@@ -32,7 +41,20 @@ def test_youtube():
     return {"message": "Youtube route is working"}
 
 @router.get("/login")
-def youtube_login(user_id: str):
+def youtube_login(token: str):
+    try:
+        # Re-use our secure decoding logic
+        payload = jwt.decode(
+            token, 
+            public_key, 
+            algorithms=["ES256"], 
+            audience="authenticated"
+        )
+        verified_user_id = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+    
+
     auth_params = {
         "client_id": CLIENT_ID,
         "redirect_uri": REDIRECT_URI,
@@ -40,7 +62,7 @@ def youtube_login(user_id: str):
         "response_type": "code",
         "access_type": "offline", # Crucial for refresh_token
         "prompt": "consent",      # Ensures refresh_token is sent every time
-        "state": user_id          # Pass user_id to callback
+        "state": verified_user_id          # Pass user_id to callback
     }
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(auth_params)
     return RedirectResponse(auth_url)
