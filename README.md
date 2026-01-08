@@ -32,12 +32,12 @@ ngrok http 8000
 
 You must first run localtunnel to expose the backend to the internet.
 
-npm install -g localtunnel
+<!-- npm install -g localtunnel
 lt --port 8000 --subdomain taki-dev-xpost --host http://loca.lt
 
 Go to https://ipv4.icanhazip.com to find your public IP address.
 
-Paste the public IP address to the lt url.
+Paste the public IP address to the lt url. -->
 
 # Updating create-checkout.ts
 
@@ -49,4 +49,6 @@ supabase functions deploy create-checkout --no-verify-jwt --use-api
 
 After updating scheduler.py, run this command again:
 
+cd packages/backend
+source venv/bin/activate
 python -m services.scheduler
