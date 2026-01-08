@@ -7,6 +7,8 @@ from services.linkedin import LinkedInService
 from utils.db_client import supabase
 from services.subscription_service import SubscriptionService
 import os
+from utils.video_processor import VideoProcessor
+
 
 class PostManager:
     @staticmethod
@@ -18,7 +20,14 @@ class PostManager:
             tasks = []
             user_perms = await SubscriptionService.get_user_permissions(user_id, supabase)
             requested_platforms = len(platforms)
+            print(f"DEBUG: User perms for watermark: {user_perms.get('no_watermark')}")
 
+            if not user_perms.get("no_watermark", False):
+                watermarked_path = file_path.replace(".mp4", "_watermarked.mp4")
+                file_path = VideoProcessor.add_unipost_watermark(file_path, watermarked_path)
+                print(f"DEBUG: Watermarking complete. New path: {file_path}")
+            else:
+                print(f"DEBUG: Watermarking skipped. Path: {file_path}")
             if requested_platforms > user_perms["max_platforms"]:
                 return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
             
