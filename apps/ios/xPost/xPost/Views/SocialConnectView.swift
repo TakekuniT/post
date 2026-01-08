@@ -381,6 +381,7 @@ struct SocialConnectView: View {
                 await checkConnections()
             }
         }
+        sessionObj.prefersEphemeralWebBrowserSession = true
         sessionObj.presentationContextProvider = authPresenter
         self.authSession = sessionObj
         sessionObj.start()
