@@ -6,6 +6,12 @@ from fastapi.responses import RedirectResponse
 from utils.db_client import UserManager
 from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
+from jose import jwt, jwk # from python-jose
+from dotenv import load_dotenv
+import json
+from utils.limiter import limiter
+
+load_dotenv()
 
 router = APIRouter()
 
@@ -14,6 +20,10 @@ CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
 CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("LINKEDIN_REDIRECT_URI")
 APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
+
+jwk_dict = json.loads(os.getenv("SUPABASE_JWK_SECRET"))
+actual_key = jwk_dict["keys"][0]
+public_key = jwk.construct(actual_key, algorithm="ES256")
 
 # Scopes for Profile access and Video/Post publishing
 SCOPES = [
@@ -28,20 +38,35 @@ def test_linkedin():
     return {"message": "LinkedIn route is working"}
 
 @router.get("/login")
-async def linkedin_login(user_id: str):
+@limiter.limit("10/minute")
+async def linkedin_login(request: Request, token: str):
     auth_url = "https://www.linkedin.com/oauth/v2/authorization"
+
+    try:
+        # Re-use our secure decoding logic
+        payload = jwt.decode(
+            token, 
+            public_key, 
+            algorithms=["ES256"], 
+            audience="authenticated"
+        )
+        verified_user_id = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+    
 
     params = {
         "response_type": "code",
         "client_id": CLIENT_ID,
         "redirect_uri": REDIRECT_URI,
-        "state": user_id,  # Passing our internal Supabase user_id
+        "state": verified_user_id,  # Passing our internal Supabase user_id
         "scope": " ".join(SCOPES), # LinkedIn uses space-separated scopes
     }
 
     return RedirectResponse(url=f"{auth_url}?{urlencode(params)}")
 
 @router.get("/callback")
+@limiter.limit("10/minute")
 async def linkedin_callback(request: Request, code: str, state: str):
     user_id = state 
     try:

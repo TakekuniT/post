@@ -5,6 +5,71 @@ from typing import Optional
 import hashlib
 import base64
 import secrets
+from fastapi import Request
+import json
+from jose import jwt, jwk # from python-jose
+from fastapi import HTTPException, Security, Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from dotenv import load_dotenv
+
+load_dotenv()
+
+security = HTTPBearer()
+
+# Replace with your Supabase JWT Secret (Found in Supabase Settings -> API)
+raw_jwk_string = json.loads(os.getenv("SUPABASE_JWK_SECRET"))
+print(f"DEBUG: raw_jwk_data type: {type(raw_jwk_string)}")
+print(f"DEBUG: raw_jwk_data content: {raw_jwk_string}")
+if not raw_jwk_string:
+    raise ValueError("JWT Secret not found in environment variables")
+
+if isinstance(raw_jwk_string, str):
+    # If it's a string, we need to decode it
+    jwk_dict = json.loads(raw_jwk_string)
+else:
+    # It's already a dictionary, just use it
+    jwk_dict = raw_jwk_string
+
+print(f"DEBUG: jwk_dict content: {jwk_dict}")
+print(f"DEBUG: kty value: {jwk_dict.get('kty')}")
+if "keys" in jwk_dict and isinstance(jwk_dict["keys"], list):
+    actual_key = jwk_dict["keys"][0]
+else:
+    actual_key = jwk_dict
+
+try:
+    public_key = jwk.construct(actual_key, algorithm="ES256")
+    print("JWK Public Key constructed successfully!")
+except Exception as e:
+    print(f"Failed to construct JWK: {e}")
+    raise
+
+
+async def get_current_user(request: Request, cred: HTTPAuthorizationCredentials = Security(security)):
+    token = cred.credentials
+    print(f"DEBUG: received credentials: {cred}")
+    try:
+        # Verify the token using your secret
+        payload = jwt.decode(
+            token, 
+            public_key, 
+            algorithms=["ES256"], 
+            audience="authenticated",
+          
+        )
+
+        
+        
+        # Ensure the user_id from the token is returned
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="user id missing, invalid token payload")
+        request.state.user_id = user_id
+        return user_id
+        
+    except Exception as e:
+        print(f"JWT Error: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(e)}")
 
 
 class OAuthManager:

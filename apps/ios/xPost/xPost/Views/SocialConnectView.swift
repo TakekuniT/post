@@ -296,7 +296,9 @@ struct SocialConnectView: View {
                 if isConnected {
                     disconnectPlatform(id)
                 } else if !isLimitReached {
-                    startSocialLogin(platform: id)
+                    Task {
+                        await startSocialLogin(platform: id)
+                    }
                 } else {
                     // Logic for when they are over the limit
                   
@@ -365,17 +367,24 @@ struct SocialConnectView: View {
 //        } catch { print("Connection check failed") }
     }
     
-    func startSocialLogin(platform: String) {
-        guard let authURL = URL(string: "\(backendBaseUrl)/\(platform)/login?user_id=\(userId)") else { return }
-        let session = ASWebAuthenticationSession(url: authURL, callbackURLScheme: "xpost") { _, _ in
+    func startSocialLogin(platform: String) async {
+//        guard let authURL = URL(string: "\(backendBaseUrl)/\(platform)/login?user_id=\(userId)") else { return }
+        guard let session = try? await supabase.auth.session else { return }
+        let token = session.accessToken
+        
+        guard let authURL = URL(string: "\(backendBaseUrl)/\(platform)/login?token=\(token)") else { return }
+
+        
+        let sessionObj = ASWebAuthenticationSession(url: authURL, callbackURLScheme: "xpost") { _, _ in
             Task {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await checkConnections()
             }
         }
-        session.presentationContextProvider = authPresenter
-        self.authSession = session
-        session.start()
+        sessionObj.prefersEphemeralWebBrowserSession = true
+        sessionObj.presentationContextProvider = authPresenter
+        self.authSession = sessionObj
+        sessionObj.start()
     }
 
     func disconnectPlatform(_ platform: String) {

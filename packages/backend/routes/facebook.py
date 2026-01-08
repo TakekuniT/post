@@ -4,6 +4,11 @@ from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from utils.db_client import UserManager
 from urllib.parse import urlencode
+import json
+from jose import jwt, jwk # from python-jose
+from dotenv import load_dotenv
+from utils.limiter import limiter
+load_dotenv()
 router = APIRouter()
 
 # --- CONFIGURATION ---
@@ -11,6 +16,11 @@ CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID")
 CLIENT_SECRET = os.getenv("FACEBOOK_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI")
 APP_REDIRECT_URI = os.getenv("APP_REDIRECT_URI")
+
+
+jwk_dict = json.loads(os.getenv("SUPABASE_JWK_SECRET"))
+actual_key = jwk_dict["keys"][0]
+public_key = jwk.construct(actual_key, algorithm="ES256")
 
 # Combined scopes for both Facebook Reels and Instagram Reels
 SCOPES = [
@@ -29,7 +39,20 @@ def test_facebook():
     return {"message": "Facebook route is working"}
 
 @router.get("/login")
-async def facebook_login(user_id: str):
+@limiter.limit("10/minute")
+async def facebook_login(request: Request, token: str):
+    try:
+        # Re-use our secure decoding logic
+        payload = jwt.decode(
+            token, 
+            public_key, 
+            algorithms=["ES256"], 
+            audience="authenticated"
+        )
+        verified_user_id = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+    
     auth_url = "https://www.facebook.com/v19.0/dialog/oauth"
 
     params = {
@@ -37,13 +60,14 @@ async def facebook_login(user_id: str):
         "redirect_uri": REDIRECT_URI,
         "scope": ",".join(SCOPES),
         "response_type": "code",
-        "state": user_id,  
+        "state": verified_user_id,  
     }
 
     return RedirectResponse(url=f"{auth_url}?{urlencode(params)}")
     
 
 @router.get("/callback")
+@limiter.limit("10/minute")
 async def facebook_callback(request: Request, code: str, state: str):
     user_id = state 
     try:
