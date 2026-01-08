@@ -3,6 +3,7 @@ import requests
 import math
 from datetime import datetime, timedelta, timezone
 from utils.db_client import UserManager
+import asyncio
 
 class TikTokService:
     @staticmethod
@@ -160,17 +161,59 @@ class TikTokService:
             print(f"DEBUG: Starting TikTok Upload for {caption}")
             token = TikTokService.get_valid_token(user_id)
             
-            video_size = os.path.getsize(file_path)
+
+            ## WORKING FOR NON WATERMARKED VIDEOS
             
-            # For files under 64MB, ALWAYS use 1 chunk. 
-            # This eliminates math errors with TikTok's validator.
-            if video_size < 64 * 1024 * 1024:
-                chunk_size = video_size
-                total_chunks = 1
-            else:
-                # For large files, use 10MB chunks
-                chunk_size = 10 * 1024 * 1024
-                total_chunks = math.ceil(video_size / chunk_size)
+            # video_size = os.path.getsize(file_path)
+
+            # # TikTok hard preference
+            # SINGLE_CHUNK_THRESHOLD = 64 * 1024 * 1024  # 64MB
+            # MIN_CHUNK = 5 * 1024 * 1024  # 5MB
+
+            # if video_size < SINGLE_CHUNK_THRESHOLD:
+            #     chunk_size = video_size
+            #     total_chunks = 1
+            # else:
+            #     chunk_size = 10 * 1024 * 1024  # 10MB safe value
+            #     total_chunks = math.ceil(video_size / chunk_size)
+
+            # # Explicit ints (TikTok is strict)
+            # video_size = int(video_size)
+            # chunk_size = int(chunk_size)
+            # total_chunks = int(total_chunks)
+
+            # print(f"[TikTok Upload] size={video_size} chunk={chunk_size} count={total_chunks}")
+
+
+            ## WORKING FOR NON WATERMARKED VIDEOS
+
+            video_size = os.path.getsize(file_path)
+
+            SINGLE_CHUNK_LIMIT = 128 * 1024 * 1024  # 128MB — TikTok accepts this
+            PREFERRED_CHUNK = 10 * 1024 * 1024      # 10MB
+
+            # Default: single chunk (SAFE)
+            chunk_size = video_size
+            total_chunks = 1
+
+            # Try multi-chunk ONLY if very large AND divisible
+            if video_size > SINGLE_CHUNK_LIMIT:
+                for chunks in range(2, 50):  # reasonable upper bound
+                    if video_size % chunks == 0:
+                        chunk_size = video_size // chunks
+                        total_chunks = chunks
+                        break
+
+            # Explicit ints
+            video_size = int(video_size)
+            chunk_size = int(chunk_size)
+            total_chunks = int(total_chunks)
+
+            print(f"[TikTok Upload] size={video_size} chunk={chunk_size} count={total_chunks}")
+
+
+
+
 
             print(f"[Upload] File: {video_size} | Chunk: {chunk_size} | Count: {total_chunks}")
 
@@ -232,11 +275,12 @@ class TikTokService:
 
             status_url = "https://open.tiktokapis.com/v2/post/publish/status/fetch/"
             status_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-            
+            # await asyncio.sleep(5)
             status_res = requests.post(status_url, json={"publish_id": publish_id}, headers=status_headers).json()
             
-            # 3. Get the REAL Video ID (public_item_id)
+            # # 3. Get the REAL Video ID (public_item_id)
             video_id = status_res.get("data", {}).get("public_item_id")
+
 
             return {"platform": "tiktok", "url": f"https://www.tiktok.com/v/{video_id}"}
             # will take a look at tiktok again after production

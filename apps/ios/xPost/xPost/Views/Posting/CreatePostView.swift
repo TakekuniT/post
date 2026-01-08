@@ -25,6 +25,8 @@ struct CreatePostView: View {
     @State private var isScheduled = false
     @State private var scheduleDate = Date().addingTimeInterval(3600)
     
+    @State private var userTier: String = "loading"
+    
     let platforms = ["youtube", "instagram", "tiktok", "facebook", "linkedin"]
     let platformAssets = ["youtube": "youtube", "instagram": "instagram", "tiktok": "tiktok", "facebook": "facebook", "linkedin": "linkedin-in"]
     let apiService = APIService()
@@ -92,6 +94,7 @@ struct CreatePostView: View {
                 }
             }
             .task {
+                self.userTier = await getCurrentTier()
                 if let linked = try? await AuthService.shared.fetchLinkedPlatforms() {
                                     withAnimation(.spring()) {
                         self.linkedPlatforms = Set(linked)
@@ -134,17 +137,66 @@ struct CreatePostView: View {
         .simultaneousGesture(TapGesture().onEnded { Haptics.selection() })
     }
     
+//    private var scheduleToggle: some View {
+//        VStack(spacing: 12) {
+//            Toggle("Schedule Post", isOn: $isScheduled.animation(.spring()))
+//                .tint(.brandPurple)
+//                .font(.system(.headline, design: .rounded))
+//            
+//            if isScheduled {
+//                DatePicker(
+//                    "Select Time",
+//                    selection: $scheduleDate,
+//                    in: Date()..., // Prevents selecting past dates
+//                    displayedComponents: [.date, .hourAndMinute]
+//                )
+//                .datePickerStyle(.compact)
+//                .tint(.brandPurple)
+//                .transition(.move(edge: .top).combined(with: .opacity))
+//            }
+//        }
+//        .padding()
+//        .background(.ultraThinMaterial)
+//        .cornerRadius(16)
+//        .overlay(
+//            RoundedRectangle(cornerRadius: 16)
+//                .stroke(Color.brandPurple.opacity(0.4), lineWidth: 1.5)
+//        )
+//    }
+//
     private var scheduleToggle: some View {
-        VStack(spacing: 12) {
-            Toggle("Schedule Post", isOn: $isScheduled.animation(.spring()))
+        let isFreeTier = userTier.lowercased() == "free"
+        
+        return VStack(spacing: 12) {
+            HStack {
+                Toggle(isOn: $isScheduled.animation(.spring())) {
+                    HStack(spacing: 8) {
+                        Text("Schedule Post")
+                        if isFreeTier {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color.brandPurple)
+                        }
+                    }
+                }
                 .tint(.brandPurple)
                 .font(.system(.headline, design: .rounded))
+                // This is the key: disable if free
+                .disabled(isFreeTier)
+                // Trigger upgrade sheet if they tap the disabled area
+                .onTapGesture {
+                    if isFreeTier {
+                        Haptics.error()
+                        //isShowingUpgradeSheet = true
+                    }
+                }
+            }
             
-            if isScheduled {
+            if isScheduled && !isFreeTier {
                 DatePicker(
                     "Select Time",
                     selection: $scheduleDate,
-                    in: Date()..., // Prevents selecting past dates
+                    in: Date()...,
                     displayedComponents: [.date, .hourAndMinute]
                 )
                 .datePickerStyle(.compact)
@@ -157,10 +209,11 @@ struct CreatePostView: View {
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.brandPurple.opacity(0.4), lineWidth: 1.5)
+                .stroke(Color.brandPurple.opacity(isFreeTier ? 0.1 : 0.4), lineWidth: 1.5)
         )
+        // Dim the whole section slightly if it's free tier
+        .opacity(isFreeTier ? 0.6 : 1.0)
     }
-    
     
     
     private var platformSelectionGrid: some View {

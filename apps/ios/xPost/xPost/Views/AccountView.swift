@@ -45,6 +45,7 @@ struct AccountView: View {
     @State private var processingTier: String? = nil
     @State private var checkoutURL: URL?
     @State private var showSafari = false
+    @State private var showCards = false
     
     // MARK: - Plan Configuration
     private var currentPlanName: String {
@@ -64,140 +65,185 @@ struct AccountView: View {
         }
     }
     
+    private var backgroundLayers: some View {
+        ZStack {
+            Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+            
+            LinearGradient(colors: [.brandPurple.opacity(0.25), .clear],
+                           startPoint: .top,
+                           endPoint: .bottom)
+                .ignoresSafeArea()
+        }
+        
+    }
+    
+    private var dismissalOverlay: some View {
+        Color.white.opacity(0.001) // Using 0.001 makes it "hittable" but invisible
+            .ignoresSafeArea()
+            .onTapGesture {
+                withAnimation(.spring()) {
+                    selectedPerkMessage = nil
+                }
+            }
+            .zIndex(90)
+    }
+    
+    private var profileHeader: some View {
+        VStack(spacing: 15) {
+            ZStack {
+                Circle()
+                    .fill(Color.brandPurple.opacity(0.15))
+                    .frame(width: 100, height: 100)
+                    .blur(radius: 20)
+                 
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(Color.brandPurple.gradient)
+            }
+            .padding(.top, 20)
+            
+            VStack(spacing: 4) {
+                Text(userName)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                Text(userEmail)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .opacity(isAnimating ? 1 : 0)
+        .offset(y: isAnimating ? 0 : 15)
+    }
+    
+    private var subscriptionCarousel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Subscription Plans")
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 24)
+                .opacity(showCards ? 1 : 0)
+                .offset(x: showCards ? 0 : -10)
+                .animation(
+                        .spring(response: 0.6, dampingFraction: 0.8)
+                        .delay(0.05), 
+                        value: showCards
+                    )
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+//                    ForEach(PlanTier.allCases, id: \.self) { plan in
+//                        tierCard(for: plan)
+//                            .opacity(showCards ? 1 : 0)
+//                            .offset(x: showCards ? 0 : 50)
+//                            
+//                    }
+                    ForEach(Array(PlanTier.allCases.enumerated()), id: \.element) { index, plan in
+                                        tierCard(for: plan)
+                        .opacity(showCards ? 1 : 0)
+                        .offset(y: showCards ? 0 : 30) // Slide up effect
+                        .animation(
+                            .spring(response: 0.6, dampingFraction: 0.8)
+                            .delay(Double(index) * 0.15), // Staggered delay
+                            value: showCards
+                        )
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 10)
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+            
+            Text("Once a subscription is canceled, your card will no longer be charged and the plan will be reverted to the Starter tier at the end of the billing period.")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary.opacity(0.8))
+                    .padding(.horizontal, 32)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    
+    private var actionButtons: some View {
+        VStack(spacing: 12) {
+            accountActionRow(title: "Sign Out", icon: "rectangle.portrait.and.arrow.right", color: .primary) {
+                Haptics.selection()
+                signOut()
+            }
+            
+            accountActionRow(title: "Delete Account", icon: "trash", color: .roseRed) {
+                Haptics.selection()
+                showDeleteAlert = true
+            }
+        }
+        .padding(.horizontal)
+        .opacity(isAnimating ? 1 : 0)
+        .offset(y: isAnimating ? 0 : 25)
+        .animation(.spring().delay(0.2), value: isAnimating)
+    }
+    private var footerInfo: some View {
+        Text("User ID: \(userId.prefix(12))...")
+            .font(.system(.caption2, design: .monospaced))
+            .foregroundColor(.secondary.opacity(0.5))
+            .padding(.top, 10)
+    }
+    
+    private var perkOverlay: some View {
+        Group {
+            if let message = selectedPerkMessage {
+                VStack {
+                    Spacer()
+                    HStack(spacing: 12) {
+                        Text(message)
+                            .font(.system(.subheadline, design: .rounded, weight: .medium))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        Button {
+                            withAnimation(.spring()) { selectedPerkMessage = nil }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.white.opacity(0.6))
+                                .font(.system(size: 20))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.brandPurple.opacity(0.9))
+                    )
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 100)
+                }
+                .zIndex(100)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .opacity.combined(with: .scale(scale: 0.9))
+                ))
+            }
+        }
+    }
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
                 
-                LinearGradient(colors: [.brandPurple.opacity(0.25), .clear],
-                               startPoint: .top,
-                               endPoint: .bottom)
-                    .ignoresSafeArea()
-                
-                
+                backgroundLayers
                 
                 if selectedPerkMessage != nil {
-                    Color.white.opacity(0.001) // Using 0.001 makes it "hittable" but invisible
-                        .ignoresSafeArea()
-                        .onTapGesture {
-                            withAnimation(.spring()) {
-                                selectedPerkMessage = nil
-                            }
-                        }
-                        .zIndex(90) // Ensure this is below the message (100)
+                    dismissalOverlay
                 }
-                
-                
-                
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 25) {
-                        VStack(spacing: 15) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.brandPurple.opacity(0.15))
-                                    .frame(width: 100, height: 100)
-                                    .blur(radius: 20)
-                                 
-                                Image(systemName: "person.crop.circle.fill")
-                                    .font(.system(size: 80))
-                                    .foregroundStyle(Color.brandPurple.gradient)
-                            }
-                            .padding(.top, 20)
-                            
-                            VStack(spacing: 4) {
-                                Text(userName)
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                                Text(userEmail)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .opacity(isAnimating ? 1 : 0)
-                        .offset(y: isAnimating ? 0 : 15)
-
-                        VStack(alignment: .leading, spacing: 15) {
-                            Text("Subscription Plans")
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 24)
-                            
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 16) {
-                                    ForEach(PlanTier.allCases, id: \.self) { plan in
-                                        tierCard(for: plan)
-                                    }
-                                }
-                                .padding(.horizontal, 24)
-                                .scrollTargetLayout()
-                            }
-                            .scrollTargetBehavior(.viewAligned)
-                            
-                            Text("Once a subscription is canceled, your card will no longer be charged and the plan will be reverted to the Starter tier at the end of the billing period.")
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary.opacity(0.8))
-                                    .padding(.horizontal, 32)
-                                    .multilineTextAlignment(.center)
-                                    .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        VStack(spacing: 12) {
-                            accountActionRow(title: "Sign Out", icon: "rectangle.portrait.and.arrow.right", color: .primary) {
-                                Haptics.selection()
-                                signOut()
-                            }
-                            
-                            accountActionRow(title: "Delete Account", icon: "trash", color: .roseRed) {
-                                Haptics.selection()
-                                showDeleteAlert = true
-                            }
-                        }
-                        .padding(.horizontal)
-                        .opacity(isAnimating ? 1 : 0)
-                        .offset(y: isAnimating ? 0 : 25)
-                        .animation(.spring().delay(0.2), value: isAnimating)
-
-                        Text("User ID: \(userId.prefix(12))...")
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundColor(.secondary.opacity(0.5))
-                            .padding(.top, 10)
+                        profileHeader
+                        subscriptionCarousel
+                        actionButtons
+                        footerInfo
+                        
                     }
                     .padding(.bottom, 30)
                 }
                 
-                if let message = selectedPerkMessage {
-                    VStack {
-                        Spacer()
-                        HStack(spacing: 12) {
-                            Text(message)
-                                .font(.system(.subheadline, design: .rounded, weight: .medium))
-                                .foregroundColor(.white)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                            
-                            Button {
-                                withAnimation(.spring()) { selectedPerkMessage = nil }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .font(.system(size: 20))
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.brandPurple.opacity(0.9))
-                        )
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 100)
-                    }
-                    .zIndex(100)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .opacity.combined(with: .scale(scale: 0.9))
-                    ))
-                }
+                perkOverlay
             }
             .navigationTitle("")
             .navigationBarHidden(true)
@@ -210,6 +256,7 @@ struct AccountView: View {
             .onAppear {
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
                     isAnimating = true
+                    showCards = true
                 }
             }
             .task {
@@ -299,7 +346,7 @@ struct AccountView: View {
         let currentWeight = tierWeights[userTier.lowercased()] ?? 0
         let cardWeight = tierWeights[plan.rawValue] ?? 0
         
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text(plan.displayName)
                     .font(.caption.bold())
@@ -308,6 +355,7 @@ struct AccountView: View {
                     .padding(.vertical, 4)
                     .background(isCurrentPlan ? Color.brandPurple : Color.brandPurple.opacity(0.1))
                     .clipShape(Capsule())
+                    .animation(.spring(), value: isCurrentPlan)
                 
                 Spacer()
                 
@@ -315,6 +363,7 @@ struct AccountView: View {
                     Text("Current")
                         .font(.caption2.bold())
                         .foregroundColor(.secondary)
+                        .transition(.opacity.combined(with: .scale))
                 }
             }
             
@@ -435,6 +484,7 @@ struct AccountView: View {
                 }
             }
             .disabled(processingTier != nil)
+            .animation(.easeInOut(duration: 0.3), value: isCurrentPlan)
         }
         .padding(20)
         .frame(width: 280, height: 380)
@@ -446,6 +496,8 @@ struct AccountView: View {
                         .stroke(isCurrentPlan ? Color.brandPurple.opacity(0.5) : Color.white.opacity(0.2), lineWidth: 2)
                 )
         )
+        //.scaleEffect(isCurrentPlan ? 1.02 : 1.0) // Subtle pop for current plan
+        //.animation(.spring(), value: isCurrentPlan)
     }
 
     // MARK: - Logic

@@ -62,4 +62,42 @@ class PostService {
         
         return try decoder.decode([PostModel].self, from: response.data)
     }
+    
+    
+    func fetchMonthlyPostCount() async throws -> Int {
+        let session = try await supabase.auth.session
+        let userId = session.user.id
+        
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: Date())
+        guard let startOfMonth = calendar.date(from: components) else { return 0 }
+        
+        let formatter = ISO8601DateFormatter()
+        let dateString = formatter.string(from: startOfMonth)
+
+        // Explicitly define the response type
+        let response = try await supabase
+            .from("posts")
+            .select("id", head: true, count: .exact)
+            .eq("user_id", value: userId)
+            .gte("created_at", value: dateString)
+            .execute()
+        
+        // Optional binding to safely extract the count
+        if let total = response.count {
+            return total
+        }
+        
+        return 0
+    }
+    
+    
+}
+
+
+
+
+// Helper struct for decoding the count response
+struct CountResponse: Codable {
+    let count: Int
 }

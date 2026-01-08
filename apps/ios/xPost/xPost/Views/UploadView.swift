@@ -8,10 +8,34 @@
 import SwiftUI
 
 struct UploadView: View {
+    @Binding var activeTab: Tab
+    @State private var userTier: String = "loading"
+    @State private var monthlyPostCount: Int = 0
+    @State private var isShowingUpgradeSheet: Bool = false
+    
     @State private var showCreateSheet = false
     @State private var animateItems = false
     @State private var bounceTrigger = 0
     @State private var animationPhase: Int = 0
+    
+    private var canUpload: Bool {
+        if userTier.lowercased() == "free" {
+            return monthlyPostCount < 10
+        }
+        return true
+    }
+    
+    func loadUserData() async {
+        self.userTier = await getCurrentTier()
+        do {
+            let count = try await PostService.shared.fetchMonthlyPostCount()
+            await MainActor.run {
+                self.monthlyPostCount = count
+            }
+        } catch {
+            print("Error loading upload limits: \(error)")
+        }
+    }
     
     
     func startAnimations() {
@@ -143,81 +167,7 @@ struct UploadView: View {
                         .offset(y: animationPhase >= 3 ? 0 : 20)
                         
                     }
-                    
-                    
-                    
-                    
-                    
-//                    VStack(spacing: 25) {
-//                        headerSection
-//                        // Header Illustration
-//                        
-//                        ZStack {
-//                            Circle()
-//                                .fill(Color.brandPurple.opacity(0.1))
-//                                .frame(width: 160, height: 160)
-//                            
-//                            Image(systemName: "plus.viewfinder")
-//                                .font(.system(size: 70, weight: .thin))
-//                                .foregroundColor(.brandPurple)
-//                                .symbolEffect(.bounce, value: bounceTrigger)
-//                        }
-//                        .padding(.top, 40)
-//                        
-//                        VStack(spacing: 8) {
-//                            Text("Ready to share?")
-//                                .font(.system(.title, design: .rounded, weight: .bold))
-//                            
-//                            Text("Choose your content type and reach all your platforms at once.")
-//                                .font(.subheadline)
-//                                .foregroundColor(.secondary)
-//                                .multilineTextAlignment(.center)
-//                                .padding(.horizontal, 40)
-//                        }
-//                        .opacity(animateItems ? 1 : 0)
-//                        .offset(y: animateItems ? 0 : 10)
-//
-//                        // Action Cards
-//                        VStack(spacing: 16) {
-//                            // Video (Active)
-//                            uploadActionCard(
-//                                title: "Video Post",
-//                                subtitle: "Share Reels, Shorts, or TikToks",
-//                                icon: "video.fill",
-//                                color: .brandPurple,
-//                                delay: 0.1
-//                            ) {
-//                                Haptics.selection()
-//                                showCreateSheet = true
-//                            }
-//                            
-//                            // Picture (Placeholder)
-//                            uploadActionCard(
-//                                title: "Image Gallery",
-//                                subtitle: "Post photos and carousels",
-//                                icon: "photo.on.rectangle.angled",
-//                                color: .brandPurple.opacity(0.7),
-//                                delay: 0.2
-//                            ) {
-//                                Haptics.selection()
-//                                // Logic for pictures coming soon
-//                            }
-//                            
-//                            // Text (Placeholder)
-//                            uploadActionCard(
-//                                title: "Thought / Update",
-//                                subtitle: "Share a text-only update",
-//                                icon: "text.quote",
-//                                color: .brandPurple.opacity(0.5),
-//                                delay: 0.3
-//                            ) {
-//                                Haptics.selection()
-//                                // Logic for text coming soon
-//                            }
-//                        }
-//                        .padding(.horizontal, 20)
-//                    }
-                    
+                     
                     
                 }
             }
@@ -234,30 +184,124 @@ struct UploadView: View {
             }
           
         }
+        .sheet(isPresented: $showCreateSheet) {
+            CreatePostView()
+        }
+        // Added the Upgrade Sheet exactly like SocialConnectView
+        .sheet(isPresented: $isShowingUpgradeSheet) {
+            UpgradeTierView(currentTier: userTier, activeTab: $activeTab)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .onAppear {
+            startAnimations()
+            bounceTrigger += 1
+        }
+        .task {
+            await loadUserData()
+        }
+        
+        
     }
     
 
     // MARK: - Action Card Component
+//    @ViewBuilder
+//    func uploadActionCard(title: String, subtitle: String, icon: String, color: Color, delay: Double, action: @escaping () -> Void) -> some View {
+//        let isLocked = !canUpload
+//        Button(action: action) {
+//            if isLocked {
+//                Haptics.error()
+//                isShowingUpgradeSheet = true
+//            } else {
+//                HStack(spacing: 20) {
+//                    ZStack {
+//                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+//                            .fill(color.gradient)
+//                            .frame(width: 50, height: 50)
+//                        
+//                        Image(systemName: icon)
+//                            .foregroundColor(.white)
+//                            .font(.title3)
+//                    }
+//                    
+//                    VStack(alignment: .leading, spacing: 2) {
+//                        Text(title)
+//                            .font(.headline)
+//                            .foregroundColor(.primary)
+//                        
+//                        Text(subtitle)
+//                            .font(.caption)
+//                            .foregroundColor(.secondary)
+//                    }
+//                    
+//                    Spacer()
+//                    
+//                    Image(systemName: "chevron.right")
+//                        .font(.caption.bold())
+//                        .foregroundColor(.secondary.opacity(0.5))
+//                }
+//                .padding()
+//                .background(.ultraThinMaterial)
+//                .cornerRadius(16)
+//                .overlay(
+//                    RoundedRectangle(cornerRadius: 16)
+//                        .stroke(Color.brandPurple.opacity(0.1), lineWidth: 1)
+//                )
+//                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+//            }
+//            
+//        }
+//        .buttonStyle(PlainButtonStyle())
+//        .opacity(animateItems ? 1 : 0)
+//        .offset(y: animateItems ? 0 : 20)
+//        .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay), value: animateItems)
+//    }
+    
+    
     @ViewBuilder
     func uploadActionCard(title: String, subtitle: String, icon: String, color: Color, delay: Double, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        let isLocked = !canUpload
+        
+        Button(action: {
+            // --- 1. LOGIC BLOCK (Code goes here) ---
+            if isLocked {
+                Haptics.error()
+                isShowingUpgradeSheet = true
+            } else {
+                action()
+            }
+        }) {
+            // --- 2. VIEW BLOCK (Visuals go here) ---
             HStack(spacing: 20) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(color.gradient)
+                        .fill(isLocked ? Color.gray.gradient : color.gradient)
                         .frame(width: 50, height: 50)
                     
-                    Image(systemName: icon)
+                    Image(systemName: isLocked ? "lock.fill" : icon)
                         .foregroundColor(.white)
                         .font(.title3)
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                    HStack {
+                        Text(title)
+                            .font(.headline)
+                            .foregroundColor(isLocked ? .secondary : .primary)
+                        
+                        if isLocked {
+                            Text("PRO")
+                                .font(.system(size: 8, weight: .bold))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(Color.brandPurple.opacity(0.2))
+                                .foregroundColor(Color.brandPurple)
+                                .cornerRadius(4)
+                        }
+                    }
                     
-                    Text(subtitle)
+                    Text(isLocked ? "\(monthlyPostCount)/10 posts used this month" : subtitle)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -273,12 +317,11 @@ struct UploadView: View {
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.brandPurple.opacity(0.1), lineWidth: 1)
+                    .stroke(isLocked ? Color.brandPurple.opacity(0.2) : Color.brandPurple.opacity(0.1), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
         }
         .buttonStyle(PlainButtonStyle())
-        .opacity(animateItems ? 1 : 0)
+        .opacity(animateItems ? (isLocked ? 0.8 : 1.0) : 0)
         .offset(y: animateItems ? 0 : 20)
         .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay), value: animateItems)
     }

@@ -7,7 +7,8 @@ import shutil
 from pathlib import Path
 from typing import Optional, List
 from datetime import datetime
-
+from services.subscription_service import SubscriptionService
+from utils.db_client import supabase
 router = APIRouter()
 
 class PublishRequest(BaseModel):
@@ -57,7 +58,21 @@ async def publish_video(request: PublishRequest, background_tasks: BackgroundTas
     # if not os.path.exists(request.video_path):
     #     raise HTTPException(status_code=400, detail="Video file not found")
 
+    user_perms = await SubscriptionService.get_user_permissions(request.user_id, supabase)
+    if len(request.platforms) > user_perms["max_platforms"]:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Your tier allows max {user_perms['max_platforms']} platforms."
+        )
 
+    if request.scheduled_at and not user_perms.get("can_schedule", True): # Add this to your TIER_CONFIG
+         raise HTTPException(
+            status_code=403, 
+            detail="Scheduling is only available for Pro and Elite tiers."
+        )
+    
+    
+    
     # 2. Prepare DB entry for Supabase
     db_entry = {
         "user_id": request.user_id,
