@@ -179,7 +179,8 @@ struct AccountView: View {
         .animation(.spring().delay(0.2), value: isAnimating)
     }
     private var footerInfo: some View {
-        Text("User ID: \(userId.prefix(12))...")
+        //Text("User ID: \(userId.prefix(12))...")
+        Text("© 2026 Takekuni Tanemori. All Rights Reserved.")
             .font(.system(.caption2, design: .monospaced))
             .foregroundColor(.secondary.opacity(0.5))
             .padding(.top, 10)
