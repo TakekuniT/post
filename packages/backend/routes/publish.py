@@ -10,6 +10,8 @@ from datetime import datetime
 from services.subscription_service import SubscriptionService
 from utils.db_client import supabase
 from utils.oauth import get_current_user
+from utils.limiter import limiter
+from fastapi import Request
 router = APIRouter()
 
 class PublishRequest(BaseModel):
@@ -46,21 +48,26 @@ async def get_local_video(file_name: str) -> str:
 
 
 @router.post("")
+@limiter.limit("5/minute")
 async def publish_video(
-    request: PublishRequest, 
+    request: Request,
+    publish_request: PublishRequest,
     background_tasks: BackgroundTasks,
     authenticated_user_id: str = Depends(get_current_user)
 ):
     safe_user_id = authenticated_user_id
 
-    static_folder = Path(__file__).resolve().parents[1] / "static"
-    if static_folder.exists() and static_folder.is_dir():
-        # Remove all files and folders inside static
-        for item in static_folder.iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item)
+    # static_folder = Path(__file__).resolve().parents[1] / "static"
+    # if static_folder.exists() and static_folder.is_dir():
+    #     # Remove all files and folders inside static
+    #     for item in static_folder.iterdir():
+    #         if item.is_file():
+    #             item.unlink()
+    #         elif item.is_dir():
+    #             shutil.rmtree(item)
+
+
+
     # 1. Quick Validation
     # if not os.path.exists(request.video_path):
     #     raise HTTPException(status_code=400, detail="Video file not found")
@@ -71,13 +78,13 @@ async def publish_video(
     if not user_perms:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-    if len(request.platforms) > user_perms["max_platforms"]:
+    if len(publish_request.platforms) > user_perms["max_platforms"]:
         raise HTTPException(
             status_code=403, 
             detail=f"Your tier allows max {user_perms['max_platforms']} platforms."
         )
 
-    if request.scheduled_at and not user_perms.get("can_schedule", True): # Add this to your TIER_CONFIG
+    if publish_request.scheduled_at and not user_perms.get("can_schedule", True): # Add this to your TIER_CONFIG
          raise HTTPException(
             status_code=403, 
             detail="Scheduling is only available for Pro and Elite tiers."
@@ -88,12 +95,12 @@ async def publish_video(
     # 2. Prepare DB entry for Supabase
     db_entry = {
         "user_id": safe_user_id, #request.user_id,
-        "caption": request.caption,
-        "description": request.description,
-        "video_path": request.video_path,
-        "platforms": request.platforms,
-        "scheduled_at": request.scheduled_at.isoformat() if request.scheduled_at else None,
-        "status": "pending" if request.scheduled_at else "published",
+        "caption": publish_request.caption,
+        "description": publish_request.description,
+        "video_path": publish_request.video_path,
+        "platforms": publish_request.platforms,
+        "scheduled_at": publish_request.scheduled_at.isoformat() if publish_request.scheduled_at else None,
+        "status": "pending" if publish_request.scheduled_at else "published",
         "platform_links": {}
     }
 
@@ -106,21 +113,21 @@ async def publish_video(
 
     # 4. Publish now or wait for scheduler
 
-    if not request.scheduled_at:
-        local_path = await get_local_video(request.video_path)
+    if not publish_request.scheduled_at:
+        local_path = await get_local_video(publish_request.video_path)
 
         background_tasks.add_task(
             PostManager.distribute_video,
             post_id, # pass post id to background
-            request.user_id,
+            safe_user_id,
             local_path,
-            request.caption,
-            request.description,
-            request.platforms
+            publish_request.caption,
+            publish_request.description,
+            publish_request.platforms
         )
-        return {"status": "Processing", "message": f"Immediate upload started for {request.platforms}"}
+        return {"status": "Processing", "message": f"Immediate upload started for {publish_request.platforms}"}
     else:
-        return {"status": "Scheduled", "message": f"Post queuedfor {request.platforms}"}
+        return {"status": "Scheduled", "message": f"Post queuedfor {publish_request.platforms}"}
     
 
 

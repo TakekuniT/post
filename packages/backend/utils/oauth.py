@@ -5,7 +5,7 @@ from typing import Optional
 import hashlib
 import base64
 import secrets
-
+from fastapi import Request
 import json
 from jose import jwt, jwk # from python-jose
 from fastapi import HTTPException, Security, Depends
@@ -45,7 +45,7 @@ except Exception as e:
     raise
 
 
-async def get_current_user(cred: HTTPAuthorizationCredentials = Security(security)):
+async def get_current_user(request: Request, cred: HTTPAuthorizationCredentials = Security(security)):
     token = cred.credentials
     print(f"DEBUG: received credentials: {cred}")
     try:
@@ -57,11 +57,14 @@ async def get_current_user(cred: HTTPAuthorizationCredentials = Security(securit
             audience="authenticated",
           
         )
+
+        
         
         # Ensure the user_id from the token is returned
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="user id missing, invalid token payload")
+        request.state.user_id = user_id
         return user_id
         
     except Exception as e:

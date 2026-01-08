@@ -1,5 +1,5 @@
 import shutil
-from fastapi import APIRouter, UploadFile, Form, File, HTTPException
+from fastapi import APIRouter, UploadFile, Form, File, HTTPException, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from jose import jwt, jwk # from python-jose
 from dotenv import load_dotenv
 import json 
+from utils.limiter import limiter
 load_dotenv()
 
 router = APIRouter()
@@ -41,7 +42,8 @@ def test_youtube():
     return {"message": "Youtube route is working"}
 
 @router.get("/login")
-def youtube_login(token: str):
+@limiter.limit("10/minute")
+def youtube_login(request: Request, token: str):
     try:
         # Re-use our secure decoding logic
         payload = jwt.decode(
@@ -68,7 +70,8 @@ def youtube_login(token: str):
     return RedirectResponse(auth_url)
 
 @router.get("/callback")
-async def youtube_callback(code: str, state: str):
+@limiter.limit("10/minute")
+async def youtube_callback(request: Request, code: str, state: str):
     user_id = state
     token_url = "https://oauth2.googleapis.com/token"
     data = {

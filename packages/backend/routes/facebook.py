@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 import json
 from jose import jwt, jwk # from python-jose
 from dotenv import load_dotenv
+from utils.limiter import limiter
 load_dotenv()
 router = APIRouter()
 
@@ -38,7 +39,8 @@ def test_facebook():
     return {"message": "Facebook route is working"}
 
 @router.get("/login")
-async def facebook_login(token: str):
+@limiter.limit("10/minute")
+async def facebook_login(request: Request, token: str):
     try:
         # Re-use our secure decoding logic
         payload = jwt.decode(
@@ -65,6 +67,7 @@ async def facebook_login(token: str):
     
 
 @router.get("/callback")
+@limiter.limit("10/minute")
 async def facebook_callback(request: Request, code: str, state: str):
     user_id = state 
     try:

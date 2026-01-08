@@ -4,14 +4,20 @@ from fastapi.staticfiles import StaticFiles
 
 from utils.db_client import UserManager
 
-
-
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from utils.limiter import limiter
 load_dotenv()
 
 from fastapi import FastAPI, APIRouter, Request, HTTPException
 from routes import instagram, youtube, tiktok, facebook, publish, linkedin
 
 app = FastAPI()
+
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # @app.middleware("http")
 # async def add_ngrok_skip_header(request: Request, call_next):
@@ -46,7 +52,8 @@ def read_root():
     return {"message": "xPost FastAPI backend running"}
 
 @app.delete("/disconnect/{platform}")
-async def disconnect(platform: str, user_id: str):
+@limiter.limit("10/minute")
+async def disconnect(request: Request,platform: str, user_id: str):
     try:
         success = UserManager.delete_social_account(user_id, platform)
         if success:
@@ -57,6 +64,7 @@ async def disconnect(platform: str, user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/accounts/{user_id}")
-async def get_connected_accounts(user_id: str):
+@limiter.limit("10/minute")
+async def get_connected_accounts(request: Request,user_id: str):
     accounts = UserManager.get_all_user_accounts(user_id)
     return [acc["platform"] for acc in accounts]

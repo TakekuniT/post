@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt, jwk # from python-jose
 from dotenv import load_dotenv
 import json
+from utils.limiter import limiter
 
 load_dotenv()
 
@@ -37,7 +38,8 @@ def test_linkedin():
     return {"message": "LinkedIn route is working"}
 
 @router.get("/login")
-async def linkedin_login(token: str):
+@limiter.limit("10/minute")
+async def linkedin_login(request: Request, token: str):
     auth_url = "https://www.linkedin.com/oauth/v2/authorization"
 
     try:
@@ -64,6 +66,7 @@ async def linkedin_login(token: str):
     return RedirectResponse(url=f"{auth_url}?{urlencode(params)}")
 
 @router.get("/callback")
+@limiter.limit("10/minute")
 async def linkedin_callback(request: Request, code: str, state: str):
     user_id = state 
     try:
