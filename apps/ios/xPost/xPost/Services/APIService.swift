@@ -14,20 +14,28 @@ class APIService {
     
     
     
-    func sendPost(post: Post) {
+    func sendPost(post: Post) async {
         guard let url = URL(string: "\(baseUrl)/publish") else {
             print("Invalid URL")
+            return
+        }
+        
+        var sessionToken = ""
+        do {
+            let session = try await supabase.auth.session
+            sessionToken = session.accessToken
+        } catch {
+            print("user is not logged in: \(error)")
             return
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
+        request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "Authorization")
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
-            
             let jsonData = try encoder.encode(post)
             
             // --- Print JSON for debugging ---
@@ -36,25 +44,30 @@ class APIService {
             } else {
                 print("Failed to convert JSON data to string")
             }
-
-            
-          
             // --- End debug print ---
-
             request.httpBody = jsonData
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                print("Status code: \(httpResponse.statusCode)")
+            }
+            
+            
 
-            URLSession.shared.dataTask(with: request) { data, response, error in
-                if let error = error {
-                    print("Error: \(error.localizedDescription)")
-                    return
-                }
-
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("Status code: \(httpResponse.statusCode)")
-                }
-
-                print("Successfully sent to backend!")
-            }.resume()
+//            request.httpBody = jsonData
+//
+//            URLSession.shared.dataTask(with: request) { data, response, error in
+//                if let error = error {
+//                    print("Error: \(error.localizedDescription)")
+//                    return
+//                }
+//
+//                if let httpResponse = response as? HTTPURLResponse {
+//                    print("Status code: \(httpResponse.statusCode)")
+//                }
+//
+//                print("Successfully sent to backend!")
+//            }.resume()
 
         } catch {
             print("Failed to encode post: \(error.localizedDescription)")

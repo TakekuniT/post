@@ -301,7 +301,7 @@ struct CreatePostView: View {
                     scheduled_at: isScheduled ? scheduleDate : nil
                 )
                 
-                apiService.sendPost(post: newPost)
+                await apiService.sendPost(post: newPost)
                 isUploading = false
                 dismiss()
             } catch {
