@@ -64,7 +64,7 @@ struct SocialConnectView: View {
         }
     }
     
-    let backendBaseUrl = "https://youlanda-migratory-trevor.ngrok-free.dev"
+    let backendBaseUrl = "https://post-production-3940.up.railway.app"
     
     let platformAssets: [String: String] = [
         "tiktok": "tiktok", "instagram": "instagram", "youtube": "youtube",

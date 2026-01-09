@@ -209,7 +209,7 @@ struct SignUpView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sign Up")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
-            Text("Join UniPost and amplify your reach.")
+            Text("Join UniCore and amplify your reach.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
