@@ -18,8 +18,7 @@ security = HTTPBearer()
 
 # Replace with your Supabase JWT Secret (Found in Supabase Settings -> API)
 raw_jwk_string = json.loads(os.getenv("SUPABASE_JWK_SECRET"))
-print(f"DEBUG: raw_jwk_data type: {type(raw_jwk_string)}")
-print(f"DEBUG: raw_jwk_data content: {raw_jwk_string}")
+
 if not raw_jwk_string:
     raise ValueError("JWT Secret not found in environment variables")
 
