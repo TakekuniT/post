@@ -139,7 +139,7 @@ class OAuthManager:
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         
         data = {
-            "client_key": os.getenv("TIKTOK_CLIENT_KEY"), # TikTok calls it Client Key
+            "client_key": os.getenv("TIKTOK_CLIENT_ID"), # TikTok calls it Client Key
             "client_secret": os.getenv("TIKTOK_CLIENT_SECRET"),
             "grant_type": "refresh_token",
             "refresh_token": refresh_token
