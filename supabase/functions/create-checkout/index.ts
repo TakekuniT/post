@@ -27,7 +27,8 @@ serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      //Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
     const token = authHeader.replace("Bearer ", "");
@@ -74,7 +75,7 @@ serve(async (req) => {
       supabase_user_id: user.id,
       plan_tier: tier,
     });
-    const session = await stripe.checkout.sessions.create({
+    const session = await (stripe as any).checkout.sessions.create({
       customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
@@ -91,8 +92,8 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("LOG ERROR:", error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("LOG ERROR:", (error as any).message);
+    return new Response(JSON.stringify({ error: (error as any).message }), {
       headers: { ...headers, "Content-Type": "application/json" },
       status: 400,
     });

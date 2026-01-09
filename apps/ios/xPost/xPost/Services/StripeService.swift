@@ -6,6 +6,12 @@
 //
 
 import Foundation
+import Supabase
+import Functions
+
+struct CheckoutResponse: Decodable {
+    let url: String
+}
 
 class StripeService {
     static let shared = StripeService()
@@ -40,4 +46,9 @@ class StripeService {
         
         return nil
     }
+    
+    
+    
+    
+    
 }
