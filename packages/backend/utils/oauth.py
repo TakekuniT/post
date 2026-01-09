@@ -30,8 +30,6 @@ else:
     # It's already a dictionary, just use it
     jwk_dict = raw_jwk_string
 
-print(f"DEBUG: jwk_dict content: {jwk_dict}")
-print(f"DEBUG: kty value: {jwk_dict.get('kty')}")
 if "keys" in jwk_dict and isinstance(jwk_dict["keys"], list):
     actual_key = jwk_dict["keys"][0]
 else:

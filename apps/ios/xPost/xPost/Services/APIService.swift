@@ -10,7 +10,7 @@ import Supabase
 
 class APIService {
     // 127.0.0.1 is the 'local' address for the iOS Simulator
-    let baseUrl = "https://youlanda-migratory-trevor.ngrok-free.dev"
+    let baseUrl = "https://post-production-3940.up.railway.app"
     
     
     

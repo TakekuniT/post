@@ -34,7 +34,7 @@ struct LoginView: View {
                         
                         // PHASE 1: Hero Section
                         VStack(spacing: 12) {
-                            Text("UniPost")
+                            Text("UniCore")
                                 .font(.system(size: 48, weight: .black, design: .rounded))
                                 .foregroundStyle(
                                     LinearGradient(colors: [.brandPurple, .brandPurple.opacity(0.7)],
@@ -96,7 +96,7 @@ struct LoginView: View {
                             .disabled(isLoading)
 
                             HStack {
-                                Text("New to UniPost?")
+                                Text("New to UniCore?")
                                     .foregroundColor(.secondary)
                                 NavigationLink("Create Account", destination: SignUpView())
                                     .fontWeight(.bold)

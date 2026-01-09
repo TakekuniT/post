@@ -401,7 +401,7 @@ struct AccountView: View {
                         icon: "tag.fill",
                         text: "Branded Captions",
                         isLimit: true,
-                        detailMessage: "Captions on the free tier include 'Sent via UniPost on iOS' with UniPost tags to support our community."
+                        detailMessage: "Captions on the free tier include 'Sent via UniCore on iOS' with UniCore tags to support our community."
                     )
                     perkRow(
                         icon: "network",
@@ -418,7 +418,7 @@ struct AccountView: View {
                         icon: "tag.fill",
                         text: "Branded Captions",
                         isLimit: true,
-                        detailMessage: "Captions on the free tier includes 'Sent via UniPost on iOS' with UniPost tags to support our community."
+                        detailMessage: "Captions on the free tier includes 'Sent via UniCore on iOS' with UniCore tags to support our community."
                     )
                     perkRow(
                         icon: "network",
