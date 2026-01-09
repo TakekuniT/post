@@ -70,7 +70,7 @@ async def check_and_publish():
             # Mark as failed to debug it later
             supabase.table("posts").update({"status": "failed"}).eq("id", post_id).execute()
 
-if __name__ == "__main__":
+def run_scheduler():
     # Start the heartbeat
     while True:
         print("UniPost Scheduler started...")
@@ -81,3 +81,5 @@ if __name__ == "__main__":
         
         # Wait 60 seconds before checking again
         time.sleep(60)
+
+run_scheduler()
