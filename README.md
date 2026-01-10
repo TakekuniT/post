@@ -52,3 +52,11 @@ After updating scheduler.py, run this command again:
 cd packages/backend
 source venv/bin/activate
 python -m services.scheduler
+
+# Setting up supabase edge functions
+
+open up docker
+supabase functions deploy
+supabase functions deploy create-checkout --no-verify-jwt
+supabase functions deploy stripe-webhook --no-verify-jwt
+supabase functions deploy delete-user --no-verify-jwt

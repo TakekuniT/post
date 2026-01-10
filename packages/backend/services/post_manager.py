@@ -35,7 +35,7 @@ class PostManager:
                 return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
             
             if not user_perms["non_branded_caption"]:
-                caption += "\nSent via UniPost on iOS #unipost #poweredbyunipost"
+                caption += "\nSent via UniCore on iOS #unicore #poweredbyunicore"
 
             if "youtube" in platforms:
                 tasks.append(YouTubeService.upload_video(user_id, file_path, caption, description))
