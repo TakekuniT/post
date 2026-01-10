@@ -14,6 +14,21 @@ struct ForgotPasswordView: View {
     @State private var isLoading = false
     @State private var animationPhase: Int = 0
     @Environment(\.dismiss) var dismiss
+    @State private var shakeOffset: CGFloat = 0
+
+    // Helper to wrap the error logic
+    func withErrorAnimation(_ action: () -> Void) {
+        action() // Change the message text
+        
+        // Trigger the shake sequence
+        withAnimation(.default.repeatCount(3, autoreverses: true).speed(4)) {
+            shakeOffset = 6
+        }
+        // Reset the offset after the animation finishes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            shakeOffset = 0
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -36,20 +51,34 @@ struct ForgotPasswordView: View {
                         // PHASE 2: Email Input
                         VStack(spacing: 16) {
                             customField(title: "Enter your email", text: $email, icon: "envelope.fill")
-                            
                             if !message.isEmpty {
+                                let isError = message.contains("valid") || message.contains("enter")
+                                
                                 HStack {
-                                    Image(systemName: "checkmark.circle.fill")
+                                    Image(systemName: isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
                                     Text(message)
                                 }
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundColor(.green)
+                                .foregroundColor(isError ? Color.roseRed : .green) // Red for errors
                                 .padding(.vertical, 8)
                                 .padding(.horizontal, 12)
-                                .background(Color.green.opacity(0.1))
+                                .background((isError ? Color.red : Color.green).opacity(0.1)) // Red tint background
                                 .cornerRadius(10)
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                             }
+//                            if !message.isEmpty {
+//                                HStack {
+//                                    Image(systemName: "checkmark.circle.fill")
+//                                    Text(message)
+//                                }
+//                                .font(.system(size: 13, weight: .medium, design: .rounded))
+//                                .foregroundColor(.green)
+//                                .padding(.vertical, 8)
+//                                .padding(.horizontal, 12)
+//                                .background(Color.green.opacity(0.1))
+//                                .cornerRadius(10)
+//                                .transition(.opacity.combined(with: .move(edge: .top)))
+//                            }
                         }
                         .padding(.horizontal)
                         .offset(y: animationPhase >= 2 ? 0 : 20)
@@ -152,13 +181,25 @@ struct ForgotPasswordView: View {
     }
 
     func handleReset() {
+        message = ""
+        let cleanEmail = AuthValidator.sanitize(email)
+        
+        guard !cleanEmail.isEmpty else {
+            withErrorAnimation { message = "Please enter an email address." }
+            Haptics.error()
+            return
+        }
+        if !AuthValidator.isValidEmail(cleanEmail) {
+            withErrorAnimation { message = "Please enter a valid email address." }
+            Haptics.error()
+            return
+        }
         Haptics.selection()
         isLoading = true
-        message = ""
-        
+
         Task {
             do {
-                try await AuthService.shared.resetPassword(email: email)
+                try await AuthService.shared.resetPassword(email: cleanEmail)
                 withAnimation {
                     message = "Check your email for a reset link."
                 }

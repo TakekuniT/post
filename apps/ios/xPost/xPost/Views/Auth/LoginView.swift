@@ -171,40 +171,57 @@ struct LoginView: View {
         }
     }
 
+    private func showValidationError(_ message: String) {
+        errorMessage = message
+        shakeUI()
+        Haptics.error()
+        showAlert = true
+    }
     func login() {
-        if email.isEmpty || password.isEmpty {
-            errorMessage = "Please enter both email and password."
-            showAlert = true
-            Haptics.error() // If you have an error haptic
+        
+        let sanitizedEmail = AuthValidator.sanitize(email)
+        if sanitizedEmail.isEmpty || password.isEmpty {
+//            errorMessage = "Please enter both email and password."
+//            showAlert = true
+//            Haptics.error()
+            showValidationError("Please fill in all fields.")
+            return
+        }
+        if !AuthValidator.isValidEmail(sanitizedEmail) {
+            showValidationError("Please enter a valid email address.")
             return
         }
         Haptics.selection()
+        errorMessage = ""
         Task {
             isLoading = true
             do {
-                try await AuthService.shared.signIn(email: email, pass: password)
+                try await AuthService.shared.signIn(email: sanitizedEmail, pass: password)
                 Haptics.success()
                 isAuthenticated = true
             } catch {
                 print("Error: \(error.localizedDescription)")
-                // Add error haptic here if you have one
-                let errorString = error.localizedDescription.lowercased()
-                            
-                if errorString.contains("invalid login credentials") {
-                    errorMessage = "Incorrect email or password."
-                } else if errorString.contains("email not confirmed") {
-                    errorMessage = "Please verify your email before signing in."
-                } else if errorString.contains("user not found") {
-                    errorMessage = "No account found with this email."
-                } else {
-                    errorMessage = error.localizedDescription
-                }
-                
-                showAlert = true
-                Haptics.error()
+            
+                handleLoginError(error)
                 print("Login Error: \(error)")
             }
             isLoading = false
         }
+    }
+    
+    private func handleLoginError(_ error: Error) {
+        let errorString = error.localizedDescription.lowercased()
+        
+        if errorString.contains("invalid login credentials") || errorString.contains("user not found") {
+            errorMessage = "Invalid email or password."
+        } else if errorString.contains("email not confirmed") {
+            errorMessage = "Please verify your email before signing in."
+        } else {
+            errorMessage = "Connection error. Please try again."
+        }
+        
+        showAlert = true
+        shakeUI()
+        Haptics.error()
     }
 }

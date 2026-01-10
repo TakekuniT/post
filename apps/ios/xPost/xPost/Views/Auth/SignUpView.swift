@@ -260,29 +260,54 @@ struct SignUpView: View {
             }
         }
     }
+    
+    private func showError(_ msg: String) {
+        withAnimation(.spring()) { errorMessage = msg }
+        Haptics.error()
+    }
 
+    
     func handleSignUp() {
         Haptics.selection()
         
+        let cleanEmail = AuthValidator.sanitize(email)
+        let cleanUsername = AuthValidator.sanitize(username)
+        
         // Client-side validation
-        guard !username.isEmpty else {
-            withAnimation { errorMessage = "Username cannot be empty" }
+        if cleanEmail.isEmpty || cleanUsername.isEmpty || password.isEmpty {
+            showError("All fields are required.")
             return
         }
         
-        guard password == confirmPassword else {
-            withAnimation { errorMessage = "Passwords do not match" }
+        if !AuthValidator.isValidUsername(cleanUsername) {
+            showError("Username msut be 3-20 characters long.")
             return
         }
+        
+        if !AuthValidator.isValidEmail(cleanEmail) {
+            showError("Please enter a valid email.")
+            return
+        }
+        
+        if !AuthValidator.isStrongPassword(password) {
+            showError("Password must be 8+ characters with a number and an uppercase letter.")
+            return
+        }
+        
+        if password != confirmPassword {
+            showError("Passwords do not match.")
+            return
+        }
+    
         
         Task {
             isLoading = true
             errorMessage = ""
             do {
                 try await AuthService.shared.signUp(
-                    email: email,
+                    email: cleanEmail,
                     pass: password,
-                    username: username
+                    username: cleanUsername
                 )
                 Haptics.success()
                 dismiss()
