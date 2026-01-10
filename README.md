@@ -59,3 +59,4 @@ open up docker
 supabase functions deploy
 supabase functions deploy create-checkout --no-verify-jwt
 supabase functions deploy stripe-webhook --no-verify-jwt
+supabase functions deploy delete-user --no-verify-jwt
