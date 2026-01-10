@@ -23,4 +23,16 @@ struct AuthValidator {
         // Minimum 8 characters, at least one number (adjust to your Supabase settings)
         return password.count >= 8
     }
+    static func isValidUsername(_ username: String) -> Bool {
+        // Alphanumeric, underscores, and dots only. 3-20 characters.
+        // Prevents injection of <script> or special SQL chars
+        let usernameRegex = /^[a-zA-Z0-9._]{3,20}$/
+        return username.wholeMatch(of: usernameRegex) != nil
+    }
+
+    static func isStrongPassword(_ pass: String) -> Bool {
+        // At least 8 chars, 1 uppercase, 1 number
+        let passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/
+        return pass.wholeMatch(of: passwordRegex) != nil
+    }
 }
