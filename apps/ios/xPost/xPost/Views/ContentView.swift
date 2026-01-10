@@ -5,10 +5,14 @@ import SwiftUI
 struct ContentView: View {
     @State private var isAuthenticated = false
     @State private var showResetSheet = false
+    @State private var isLoading = true
 
     var body: some View {
         Group {
-            if isAuthenticated {
+            if isLoading {
+                LoadingView()
+            }
+            else if isAuthenticated {
                 MainTabView()
             } else {
                 // No NavigationStack here, LoginView has its own
@@ -27,6 +31,10 @@ struct ContentView: View {
             // 1. Initial check for existing session
             if let session = try? await supabase.auth.session {
                 isAuthenticated = true
+            }
+            
+            withAnimation(.easeInOut(duration: 0.5)) {
+                isLoading = false
             }
 
             // 2. Listen for real-time changes (Login/Logout)
