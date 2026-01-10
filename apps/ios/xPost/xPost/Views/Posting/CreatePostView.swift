@@ -26,10 +26,26 @@ struct CreatePostView: View {
     @State private var scheduleDate = Date().addingTimeInterval(3600)
     
     @State private var userTier: String = "loading"
+    @State private var errorMessage = ""
+    @State private var shakeOffset: CGFloat = 0
+    
     
     let platforms = ["youtube", "instagram", "tiktok", "facebook", "linkedin"]
     let platformAssets = ["youtube": "youtube", "instagram": "instagram", "tiktok": "tiktok", "facebook": "facebook", "linkedin": "linkedin-in"]
     let apiService = APIService()
+    
+    func withErrorAnimation(_ action: () -> Void) {
+        withAnimation(.default) {
+            action()
+        }
+        // Shake sequence
+        withAnimation(.default.repeatCount(3, autoreverses: true).speed(4)) {
+            shakeOffset = 6
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            shakeOffset = 0
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -50,10 +66,24 @@ struct CreatePostView: View {
                                         .transition(.move(edge: .top).combined(with: .opacity)) // Adds a smooth slide-in effect
                                 }
                         }
+                        if !errorMessage.isEmpty {
+                            Text(errorMessage)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(.red)
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.red.opacity(0.1))
+                                .cornerRadius(12)
+                                .padding(.horizontal)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                                // Apply the shake here!
+                                .offset(x: shakeOffset)
+                        }
                         SectionHeader(title: "Schedule", icon: "calendar.badge.clock")
                         scheduleToggle
 
                         SectionHeader(title: "Publish To", icon: "paperplane.fill")
+                        
                         
                         platformSelectionGrid
                     }
@@ -274,15 +304,39 @@ struct CreatePostView: View {
 
     // MARK: - Upload Logic
     func handleUpload() {
+        let cleanCaption = ContentValidator.sanitize(caption)
+        let cleanDesc = ContentValidator.sanitize(description)
         guard let selectedItem = selectedItem else { return }
+                
+        do {
+            try ContentValidator.validate(caption: cleanCaption, description: cleanDesc, platforms: selectedPlatforms)
+        } catch let error as PostError {
+            Task { @MainActor in
+                withErrorAnimation {
+                    self.errorMessage = error.localizedDescription
+                }
+            }
+            return
+        } catch {
+            withErrorAnimation {
+                self.errorMessage = "Please check your inputs and try again."
+            }
+            return
+        }
         isUploading = true
-        
+
         Task {
             do {
                 guard let session = try? await supabase.auth.session else {
                     isUploading = false
                     return
                 }
+                
+                guard let movieData = try await selectedItem.loadTransferable(type: Data.self) else {
+                    throw MediaError.corruptFile
+                }
+                
+                try MediaValidator.validateVideo(data: movieData)
                 
                 let currentUserId = session.user.id.uuidString
                 guard let movieData = try await selectedItem.loadTransferable(type: Data.self) else {
