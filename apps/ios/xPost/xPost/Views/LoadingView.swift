@@ -11,18 +11,30 @@ struct LoadingView: View {
         ZStack {
             // Use your brand color or a standard background
             Color(.systemBackground).ignoresSafeArea()
+            ZStack {
+                Color.purple.ignoresSafeArea() // Use system purple just to test
+                VStack {
+                    Image("UniPost1024")
+                        .resizable()
+                        .frame(width: 100, height: 100)
+                }
+            }
             
-            VStack(spacing: 24) {
-                // Use the name you gave it in Assets
-                Image("AppIcon")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 120, height: 120)
-                    // Optional: add a slight round to the corners if it's the icon
-                    .cornerRadius(24)
+            ZStack {
+                // Change this to your actual purple color
+                Color.brandPurple.ignoresSafeArea()
                 
-                ProgressView()
-                    .scaleEffect(1.2)
+                VStack(spacing: 24) {
+                    Image("UniPost1024") // Ensure this name is exactly the same as in Assets
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 120, height: 120)
+                        .cornerRadius(24)
+                    
+                    ProgressView()
+                        .tint(.white) // Make the spinner white so it shows on purple
+                        .scaleEffect(1.2)
+                }
             }
         }
     }
