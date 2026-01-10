@@ -266,6 +266,7 @@ struct SignUpView: View {
         Haptics.error()
     }
 
+    
     func handleSignUp() {
         Haptics.selection()
         

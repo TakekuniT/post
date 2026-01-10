@@ -152,11 +152,21 @@ struct NewPasswordView: View {
             }
         }
     }
-
     
+    
+
+    private func showError(_ msg: String) {
+        withAnimation(.spring()) { errorMessage = msg }
+        Haptics.error()
+    }
     func updatePassword() {
+        
+        if !AuthValidator.isStrongPassword(newPassword) {
+            showError("Password must be 8+ characters, include a number and an uppercase letter.")
+            return
+        }
         guard newPassword == confirmPassword else {
-            withAnimation { errorMessage = "Passwords do not match" }
+            showError("Passwords do not match.")
             return
         }
         
