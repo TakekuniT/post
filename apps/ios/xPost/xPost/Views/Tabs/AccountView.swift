@@ -46,6 +46,15 @@ struct AccountView: View {
     @State private var checkoutURL: URL?
     @State private var showSafari = false
     @State private var showCards = false
+    @State private var showSideMenu = false
+    @State private var sideMenuOffset: CGFloat = 0
+    
+    
+    private func openLink(_ urlString: String) {
+        if let url = URL(string: urlString) {
+            UIApplication.shared.open(url)
+        }
+    }
     
     // MARK: - Plan Configuration
     private var currentPlanName: String {
@@ -243,11 +252,30 @@ struct AccountView: View {
                     }
                     .padding(.bottom, 30)
                 }
+                .blur(radius: showSideMenu ? 4 : 0)
+                .disabled(showSideMenu)
                 
                 perkOverlay
+                
+                if showSideMenu {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                showSideMenu = false
+                            }
+                        }
+                        .transition(.opacity)
+                        .zIndex(150)
+                }
+                
+                sideMenuView
+                    .offset(x: showSideMenu ? 0 : UIScreen.main.bounds.width)
+                    .zIndex(200)
+
             }
             .navigationTitle("")
-            .navigationBarHidden(true)
+            //.navigationBarHidden(true)
             .alert("Delete Account", isPresented: $showDeleteAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) { deleteAccount() }
@@ -264,18 +292,87 @@ struct AccountView: View {
                 await fetchUserData()
                 self.userTier = await getCurrentTier()
             }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Haptics.selection()
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            showSideMenu.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.brandPurple)
+                    }
+                }
+            }
+            .navigationTitle("Account")
+            .navigationBarTitleDisplayMode(.inline)
+            
+            
         }
-//        .onTapGesture {
-//            if selectedPerkMessage != nil {
-//                withAnimation { selectedPerkMessage = nil }
-//            }
-//        }
+
         .sheet(isPresented: $showSafari) {
             if let url = checkoutURL {
                 SafariView(url: url)
                     .ignoresSafeArea()
             }
         }
+        
+    }
+    
+    private var sideMenuView: some View {
+        HStack(spacing: 0) {
+            Spacer() // Pushes the menu to the right
+            
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Support & Legal")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .padding(.top, 60)
+                    .padding(.horizontal)
+
+                List {
+                    Section("Help") {
+                        sideMenuLink(title: "Report a Bug", icon: "ladybug.fill", url: "https://unicore-app-web.vercel.app/report-bug")
+                        sideMenuLink(title: "Feature Request", icon: "lightbulb.fill", url: "https://unicore-app-web.vercel.app/feature-request")
+                        sideMenuLink(title:"Connect Instagram to Facebook Page", icon: "link", url:"https://www.facebook.com/business/help/connect-instagram-to-page")
+                        sideMenuLink(title: "Contact Us", icon: "envelope.fill", url: "mailto:taki.unicore@gmail.com")
+                    }
+                    
+                    Section("Community") {
+                        sideMenuLink(title: "Join our Discord", icon: "bubble.left.and.bubble.right.fill", url: "https://discord.gg/mE4jRDqMZU")
+                    }
+                    
+                    Section("Legal") {
+                        sideMenuLink(title: "Privacy Policy", icon: "shield.lefthalf.filled", url: "https://unicore-app-web.vercel.app/privacy")
+                        sideMenuLink(title: "Terms of Service", icon: "doc.text.fill", url: "https://unicore-app-web.vercel.app/terms")
+                        sideMenuLink(title: "Refund Policy", icon:"dollarsign.arrow.circlepath", url:"https://unicore-app-web.vercel.app/refund-policy")
+                    }
+                }
+                .scrollContentBackground(.hidden)
+            }
+            .frame(width: UIScreen.main.bounds.width * 0.75)
+            .background(.ultraThinMaterial)
+            .overlay(
+                Rectangle()
+                    .fill(Color.brandPurple.opacity(0.1))
+                    .frame(width: 1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            )
+        }
+    }
+    
+    private func sideMenuLink(title: String, icon: String, url: String) -> some View {
+        Link(destination: URL(string: url)!) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(.brandPurple)
+                    .frame(width: 24)
+                Text(title)
+                    .font(.system(.body, design: .rounded))
+            }
+        }
+        .foregroundColor(.primary)
     }
 
     // MARK: - Subcomponents
@@ -424,7 +521,7 @@ struct AccountView: View {
                         icon: "network",
                         text: "Post to 5 Platforms",
                         isLimit: true,
-                        detailMessage: "Connect up to 3 social accounts."
+                        detailMessage: "Connect up to 5 social accounts."
                     )
                 } else {
                     perkRow(icon: "infinity", text: "Unlimited Posts")
