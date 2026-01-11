@@ -338,12 +338,12 @@ struct AccountView: View {
                     }
                     
                     Section("Community") {
-                        sideMenuLink(title: "Join Discord", icon: "bubble.left.and.bubble.right.fill", url: "https://discord.gg/yourlink")
+                        sideMenuLink(title: "Join our Discord", icon: "bubble.left.and.bubble.right.fill", url: "https://discord.gg/mE4jRDqMZU")
                     }
                     
                     Section("Legal") {
-                        sideMenuLink(title: "Privacy Policy", icon: "shield.lefthalf.filled", url: "https://yourlink.com/privacy")
-                        sideMenuLink(title: "Terms of Service", icon: "doc.text.fill", url: "https://yourlink.com/terms")
+                        sideMenuLink(title: "Privacy Policy", icon: "shield.lefthalf.filled", url: "https://unicore-app-web.vercel.app/privacy")
+                        sideMenuLink(title: "Terms of Service", icon: "doc.text.fill", url: "https://unicore-app-web.vercel.app/terms")
                     }
                 }
                 .scrollContentBackground(.hidden)
@@ -518,7 +518,7 @@ struct AccountView: View {
                         icon: "network",
                         text: "Post to 5 Platforms",
                         isLimit: true,
-                        detailMessage: "Connect up to 3 social accounts."
+                        detailMessage: "Connect up to 5 social accounts."
                     )
                 } else {
                     perkRow(icon: "infinity", text: "Unlimited Posts")
