@@ -333,8 +333,10 @@ struct AccountView: View {
 
                 List {
                     Section("Help") {
-                        sideMenuLink(title: "Report a Bug", icon: "ladybug.fill", url: "https://yourlink.com/bug")
-                        sideMenuLink(title: "Feature Request", icon: "lightbulb.fill", url: "https://yourlink.com/request")
+                        sideMenuLink(title: "Report a Bug", icon: "ladybug.fill", url: "https://unicore-app-web.vercel.app/report-bug")
+                        sideMenuLink(title: "Feature Request", icon: "lightbulb.fill", url: "https://unicore-app-web.vercel.app/feature-request")
+                        sideMenuLink(title:"Connect Instagram to Facebook Page", icon: "link", url:"https://www.facebook.com/business/help/connect-instagram-to-page")
+                        sideMenuLink(title: "Contact Us", icon: "envelope.fill", url: "mailto:taki.unicore@gmail.com")
                     }
                     
                     Section("Community") {
@@ -344,6 +346,7 @@ struct AccountView: View {
                     Section("Legal") {
                         sideMenuLink(title: "Privacy Policy", icon: "shield.lefthalf.filled", url: "https://unicore-app-web.vercel.app/privacy")
                         sideMenuLink(title: "Terms of Service", icon: "doc.text.fill", url: "https://unicore-app-web.vercel.app/terms")
+                        sideMenuLink(title: "Refund Policy", icon:"dollarsign.arrow.circlepath", url:"https://unicore-app-web.vercel.app/refund-policy")
                     }
                 }
                 .scrollContentBackground(.hidden)
