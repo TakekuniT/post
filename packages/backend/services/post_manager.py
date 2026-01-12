@@ -12,6 +12,68 @@ from utils.video_processor import VideoProcessor
 
 class PostManager:
     @staticmethod
+    async def distribute_photos(post_id: str, user_id: str, file_paths: list, caption: str, platforms: list):
+        original_paths = []
+        supabase_paths = []
+        for path in file_paths:
+            original_paths.append(path)
+            supabase_path = os.path.basename(path)
+            supabase_paths.append(supabase_path)
+        try:
+            tasks = []
+            user_perms = await SubscriptionService.get_user_permissions(user_id, supabase)
+            requested_platforms = len(platforms)
+            print(f"DEBUG: User perms for watermark: {user_perms.get('no_watermark')}")
+
+            if not user_perms.get("no_watermark", False):
+                watermarked_paths = VideoProcessor.add_photo_watermark(file_paths)
+                supabase_paths = (os.path.basename(path) for path in watermarked_paths)
+                print(f"DEBUG: Watermarking complete. New paths: {supabase_paths}")
+            else:
+                print(f"DEBUG: Watermarking skipped. Paths: {supabase_paths}")
+            if requested_platforms > user_perms["max_platforms"]:
+                return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
+
+           
+            if "instagram" in platforms:
+                tasks.append(InstagramService.upload_photos(user_id, supabase_paths, caption))
+
+            if "facebook" in platforms:
+                tasks.append(FacebookService.upload_photos(user_id, supabase_paths, caption))
+
+            if "linkedin" in platforms:
+                tasks.append(LinkedInService.upload_photos(user_id, supabase_paths, caption))
+            
+            # Run all uploads at the same time!
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            links_to_save = {}
+            for res in results:
+                if isinstance(res, dict) and res.get("url"):
+                    links_to_save[res["platform"]] = res["url"]
+
+            # Update the row in Supabase using the post_id
+            if links_to_save:
+                supabase.table("posts").update({
+                    "platform_links": links_to_save
+                }).eq("id", post_id).execute()
+
+
+            return results
+
+        finally:
+            for path in file_paths:
+                if os.path.exists(path):
+                    os.remove(path)
+                    print(f"DEBUG: Removed local file {path}")
+            try:
+                supabase.storage.from_("videos").remove(supabase_paths)
+                print(f"DEBUG: Removed {supabase_paths} from Supabase Storage")
+            except Exception as e:
+                print(f"Cleanup Error: {str(e)}")
+        
+        
+    @staticmethod
     async def distribute_video(post_id: str, user_id: str, file_path: str, caption: str, description: str, platforms: list):
         original_path = file_path # assume it looks like /videos/video.mp4
         supabase_path = os.path.basename(file_path)
