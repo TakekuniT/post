@@ -164,3 +164,93 @@ class LinkedInService:
         except Exception as e:
             print(f"[LinkedIn Service Error] {str(e)}")
             return None
+    
+    @staticmethod
+    async def upload_photos(user_id: str, file_paths: list, caption: str):
+        """
+        Unified handler for posting one or multiple photos to LinkedIn.
+        Expects a list of file paths.
+        """
+        try:
+            print(f"[LinkedIn Photo] Starting upload for {len(file_paths)} item(s)...")
+            token, person_urn = LinkedInService.get_valid_token(user_id)
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "X-Restli-Protocol-Version": "2.0.0",
+                "LinkedIn-Version": "202511",
+                "Content-Type": "application/json"
+            }
+
+            media_assets = []
+
+            for path in file_paths:
+                if not os.path.exists(path):
+                    continue
+
+                # --- PHASE 1: REGISTER IMAGE ---
+                register_url = "https://api.linkedin.com/rest/images?action=initializeUpload"
+                register_data = {
+                    "initializeUploadRequest": {
+                        "owner": f"urn:li:person:{person_urn}"
+                    }
+                }
+                reg_res = requests.post(register_url, json=register_data, headers=headers).json()
+                
+                image_urn = reg_res["value"]["image"]
+                upload_url = reg_res["value"]["uploadUrl"]
+
+                # --- PHASE 2: UPLOAD BINARY ---
+                with open(path, "rb") as f:
+                    # PUT request to the provided uploadUrl (No Auth header required for this specific URL)
+                    upload_res = requests.put(upload_url, data=f)
+                    if upload_res.status_code != 201:
+                        print(f"[LinkedIn Photo] Failed to upload binary for {path}")
+                        continue
+
+                media_assets.append({"id": image_urn})
+                print(f"[LinkedIn Photo] Staged: {image_urn}")
+
+            if not media_assets:
+                raise Exception("No photos were successfully staged.")
+
+            # --- PHASE 3: CREATE THE POST ---
+            post_url = "https://api.linkedin.com/rest/posts"
+            
+            # Determine content structure based on number of images
+            # LinkedIn uses 'media' for single and 'multiImage' for multiple
+            content = {}
+            if len(media_assets) == 1:
+                content = {"media": media_assets[0]}
+            else:
+                content = {"multiImage": {"images": media_assets}}
+
+            post_data = {
+                "author": f"urn:li:person:{person_urn}",
+                "commentary": caption,
+                "visibility": "PUBLIC",
+                "distribution": {
+                    "feedDistribution": "MAIN_FEED",
+                    "targetEntities": [],
+                    "thirdPartyDistributionChannels": []
+                },
+                "content": content,
+                "lifecycleState": "PUBLISHED"
+            }
+
+            post_res = requests.post(post_url, json=post_data, headers=headers)
+            
+            if post_res.status_code != 201:
+                raise Exception(f"LinkedIn Photo Posting Failed: {post_res.text}")
+
+            post_urn = post_res.headers.get("x-restli-id")
+            post_id = post_urn.split(":")[-1]
+            
+            # Formulating a reliable share URL
+            share_url = f"https://www.linkedin.com/feed/update/urn:li:share:{post_id}"
+            
+            print(f"[LinkedIn Photo] Success! URL: {share_url}")
+            return {"platform": "linkedin", "url": share_url}
+
+        except Exception as e:
+            print(f"[LinkedIn Photo Error] {str(e)}")
+            return None
