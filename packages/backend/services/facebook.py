@@ -108,3 +108,66 @@ class FacebookService:
         except Exception as e:
             print(f"[FB Service Error] {str(e)}")
             return None
+        
+    @staticmethod
+    async def upload_photos(user_id: str, file_paths: list, caption: str):
+        """
+        Unified photo uploader. Handles 1 or more photos.
+        Input 'file_paths' is strictly expected to be a list of strings.
+        """
+        try:
+            print(f"[FB Photo] Starting upload for {len(file_paths)} item(s)...")
+            token, page_id = FacebookService.get_valid_token(user_id)
+            attached_media = []
+
+            # --- PHASE 1: STAGE PHOTOS (UNPUBLISHED) ---
+            # We upload images individually to get IDs before creating the final post.
+            for path in file_paths:
+                if not os.path.exists(path):
+                    print(f"[FB Photo] File not found, skipping: {path}")
+                    continue
+
+                url = f"https://graph.facebook.com/v19.0/{page_id}/photos"
+                with open(path, "rb") as f:
+                    payload = {
+                        "published": "false",  # Crucial: prevents individual posts for every photo
+                        "access_token": token
+                    }
+                    files = {"source": f}
+                    res = requests.post(url, data=payload, files=files).json()
+                    
+                    if "id" in res:
+                        attached_media.append({"media_fbid": res["id"]})
+                        print(f"[FB Photo] Staged: {res['id']}")
+                    else:
+                        print(f"[FB Photo] Failed to stage {path}: {res}")
+
+            if not attached_media:
+                raise Exception("No photos were successfully staged.")
+
+            # --- PHASE 2: PUBLISH TO FEED ---
+            # This creates a single post containing all staged photos.
+            import json
+            publish_url = f"https://graph.facebook.com/v19.0/{page_id}/feed"
+            publish_payload = {
+                "message": caption,
+                "attached_media": json.dumps(attached_media),
+                "access_token": token
+            }
+            
+            publish_res = requests.post(publish_url, data=publish_payload).json()
+
+            if "id" not in publish_res:
+                raise Exception(f"FB Publish Failed: {publish_res}")
+
+            post_id = publish_res["id"]
+            print(f"[FB Photo] Success! Post ID: {post_id}")
+            
+            return {
+                "platform": "facebook", 
+                "url": f"https://www.facebook.com/{post_id}"
+            }
+
+        except Exception as e:
+            print(f"[FB Service Error] {str(e)}")
+            return None
