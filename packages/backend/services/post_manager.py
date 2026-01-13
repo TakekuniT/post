@@ -16,6 +16,7 @@ class PostManager:
         original_paths = []
         supabase_paths = []
         print("[DEBUG] distribute photos")
+        
         for path in file_paths:
             original_paths.append(path)
             supabase_path = os.path.basename(path)
@@ -35,6 +36,10 @@ class PostManager:
                 print(f"DEBUG: Watermarking skipped. Paths: {supabase_paths}")
             if requested_platforms > user_perms["max_platforms"]:
                 return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
+            
+            user_perms = await SubscriptionService.get_user_permissions(user_id, supabase)
+            if not user_perms["non_branded_caption"]:
+                caption += "\nSent via UniCore on iOS #unicore #poweredbyunicore"
 
             print(f"DEBUG: supabse_paths: {supabase_paths}")
             print(f"DEBUG: file_paths: {file_paths}")
@@ -58,7 +63,8 @@ class PostManager:
             # Update the row in Supabase using the post_id
             if links_to_save:
                 supabase.table("posts").update({
-                    "platform_links": links_to_save
+                    "platform_links": links_to_save,
+                    "status": "published" # added
                 }).eq("id", post_id).execute()
 
 
