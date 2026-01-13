@@ -100,7 +100,8 @@ async def publish_photos(
         "photo_paths": publish_request.photo_paths, 
         "platforms": publish_request.platforms,
         "scheduled_at": publish_request.scheduled_at.isoformat() if publish_request.scheduled_at else None,
-        "status": "pending" if publish_request.scheduled_at else "published",
+        #"status": "pending" if publish_request.scheduled_at else "published",
+        "status": "pending" if publish_request.scheduled_at else "uploading",
         "platform_links": {}
     }
 
