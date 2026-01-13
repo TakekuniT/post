@@ -47,10 +47,10 @@ class PostManager:
                 tasks.append(InstagramService.upload_photos(user_id, supabase_paths, caption))
 
             if "facebook" in platforms:
-                tasks.append(FacebookService.upload_photos(user_id, file_paths, caption))
+                tasks.append(FacebookService.upload_photos(user_id, supabase_paths, caption))
 
             if "linkedin" in platforms:
-                tasks.append(LinkedInService.upload_photos(user_id, file_paths, caption))
+                tasks.append(LinkedInService.upload_photos(user_id, supabase_paths, caption))
             
             # Run all uploads at the same time!
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -107,12 +107,13 @@ class PostManager:
                 print(f"DEBUG: Watermarking skipped. Path: {file_path}")
             if requested_platforms > user_perms["max_platforms"]:
                 return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
-            
+            youtube_caption = caption
             if not user_perms["non_branded_caption"]:
                 caption += "\nPosted via UniCore on iOS #unicore #poweredbyunicore"
+                description += "\nPosted via UniCore on iOS #unicore #poweredbyunicore"
 
             if "youtube" in platforms:
-                tasks.append(YouTubeService.upload_video(user_id, file_path, caption, description))
+                tasks.append(YouTubeService.upload_video(user_id, file_path, youtube_caption, description))
                 
             if "tiktok" in platforms:
                 tasks.append(TikTokService.upload_video(user_id, file_path, caption))
