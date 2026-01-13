@@ -155,7 +155,7 @@ class InstagramService:
     @staticmethod
     async def upload_photos(user_id: str, file_paths: list, caption: str):
         """
-        Uploads one or multiple photos to Instagram using local files (Resumable Flow).
+        Uploads one or multiple photos to Instagram using local files (Binary Rupload).
         """
         try:
             print(f"[DEBUG] Instagram upload photos for {user_id}")
@@ -171,8 +171,9 @@ class InstagramService:
                 # 1. Initialize container for an IMAGE
                 init_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media"
                 
-                # FIX: Do NOT include "image_url" at all when using resumable upload
+                # IMPORTANT: We add media_type=IMAGE to bypass the image_url requirement
                 init_params = {
+                    "media_type": "IMAGE", 
                     "is_carousel_item": "true" if len(file_paths) > 1 else "false",
                     "upload_type": "resumable",
                     "access_token": token
@@ -183,10 +184,11 @@ class InstagramService:
                 
                 container_id = init_res.get("id")
                 if not container_id:
-                    print(f"[ERROR] Failed to get container ID for {path}: {init_res}")
+                    print(f"[ERROR] Failed to get container ID: {init_res}")
                     continue
 
-                # 2. Upload Bytes
+                # 2. Upload Bytes via Rupload
+                # The hostname changes for the binary push
                 upload_url = f"https://rupload.facebook.com/ig-api-upload/{container_id}"
                 file_size = os.path.getsize(path)
                 
@@ -197,7 +199,7 @@ class InstagramService:
                         "file_size": str(file_size),
                         "Content-Type": "image/jpeg" 
                     }
-                    # We use .post(data=f) to stream the binary file directly
+                    # Push the raw bytes
                     upload_res = requests.post(upload_url, data=f, headers=headers).json()
                 
                 print(f"[DEBUG] Instagram binary upload response: {upload_res}")
@@ -212,13 +214,13 @@ class InstagramService:
             final_creation_id = None
             
             if len(media_ids) == 1:
-                # For a single photo, we publish the container directly.
-                # However, we must attach the caption to the container first.
+                # For single photo, the item container becomes the creation ID
+                # We update it to include the caption
                 final_creation_id = media_ids[0]
                 update_url = f"https://graph.facebook.com/v19.0/{final_creation_id}"
                 requests.post(update_url, params={"caption": caption, "access_token": token})
             else:
-                # For Carousel, create a parent container
+                # For Carousel, we create a parent container linking the children
                 carousel_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media"
                 carousel_params = {
                     "media_type": "CAROUSEL",
@@ -230,8 +232,9 @@ class InstagramService:
                 final_creation_id = carousel_res.get("id")
 
             # --- PHASE 3: Wait & Publish ---
+            # Wait for IG to process the binary images
             status_url = f"https://graph.facebook.com/v19.0/{final_creation_id}"
-            for i in range(10):
+            for i in range(12): # Wait up to 36 seconds
                 check = requests.get(status_url, params={"fields": "status_code", "access_token": token}).json()
                 status = check.get("status_code")
                 print(f"[DEBUG] Status check {i}: {status}")
@@ -243,6 +246,7 @@ class InstagramService:
                 
                 time.sleep(3)
 
+            # Final step: Publish the creation ID to the user's feed
             publish_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media_publish"
             publish_res = requests.post(publish_url, params={
                 "creation_id": final_creation_id,
@@ -259,6 +263,7 @@ class InstagramService:
                 "access_token": token
             }).json()
 
+            print(f"[DEBUG] Instagram Post Successful: {media_info.get('permalink')}")
             return {"platform": "instagram", "url": media_info.get("permalink")}
 
         except Exception as e:
