@@ -153,116 +153,87 @@ class InstagramService:
             return None
         
     @staticmethod
-    async def upload_photos(user_id: str, file_paths: list, caption: str):
+    async def upload_photos(user_id: str, image_urls: list[str], caption: str):
         """
-        Uploads one or multiple photos to Instagram using local files (Binary Rupload).
+        Uploads one or multiple photos to Instagram using PUBLIC image URLs.
         """
         try:
-            print(f"[DEBUG] Instagram upload photos for {user_id}")
             token, ig_user_id = InstagramService.get_valid_token(user_id)
             media_ids = []
 
-            # --- PHASE 1: Create individual Item Containers ---
-            for path in file_paths:
-                if not os.path.exists(path):
-                    print(f"[DEBUG] File not found: {path}")
-                    continue
-
-                # 1. Initialize container for an IMAGE
+            # --- PHASE 1: Create Image Containers ---
+            for url in image_urls:
                 init_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media"
-                
-                # CRITICAL FIX: Add "media_type": "IMAGE" to bypass the image_url requirement
-                # Also, do NOT include an empty "image_url" key.
-                init_params = {
-                    "media_type": "IMAGE", 
-                    "is_carousel_item": "true" if len(file_paths) > 1 else "false",
-                    "upload_type": "resumable",
+
+                params = {
+                    "image_url": url,
+                    "is_carousel_item": "true" if len(image_urls) > 1 else "false",
                     "access_token": token
                 }
-                
-                init_res = requests.post(init_url, params=init_params).json()
-                print(f"[DEBUG] Instagram init response: {init_res}")
-                
-                container_id = init_res.get("id")
+
+                res = requests.post(init_url, params=params).json()
+                print("[DEBUG] Instagram init response:", res)
+
+                container_id = res.get("id")
                 if not container_id:
-                    print(f"[ERROR] Failed to get container ID: {init_res}")
-                    continue
+                    raise Exception(f"Failed to create image container: {res}")
 
-                # 2. Upload Bytes via Rupload
-                upload_url = f"https://rupload.facebook.com/ig-api-upload/{container_id}"
-                file_size = os.path.getsize(path)
-                
-                with open(path, "rb") as f:
-                    headers = {
-                        "Authorization": f"Bearer {token}",
-                        "offset": "0",
-                        "file_size": str(file_size),
-                        "Content-Type": "image/jpeg" 
-                    }
-                    # Streaming the binary file
-                    upload_res = requests.post(upload_url, data=f, headers=headers).json()
-                
-                print(f"[DEBUG] Instagram binary upload response: {upload_res}")
-                
-                if upload_res.get("success"):
-                    media_ids.append(container_id)
+                media_ids.append(container_id)
 
-            if not media_ids:
-                raise Exception("Failed to stage any images.")
-
-            # --- PHASE 2: Create the Final Container ---
-            final_creation_id = None
-            
+            # --- PHASE 2: Create Final Container ---
             if len(media_ids) == 1:
-                # For single photo, the item container is the creation ID
-                # Update it to include the caption
                 final_creation_id = media_ids[0]
-                update_url = f"https://graph.facebook.com/v19.0/{final_creation_id}"
-                requests.post(update_url, params={"caption": caption, "access_token": token})
-            else:
-                # For Carousel, create a parent container linking children
-                carousel_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media"
-                carousel_params = {
-                    "media_type": "CAROUSEL",
-                    "children": ",".join(media_ids),
-                    "caption": caption,
-                    "access_token": token
-                }
-                carousel_res = requests.post(carousel_url, params=carousel_params).json()
-                final_creation_id = carousel_res.get("id")
 
-            # --- PHASE 3: Wait & Publish ---
+                # Update caption for single image
+                requests.post(
+                    f"https://graph.facebook.com/v19.0/{final_creation_id}",
+                    params={"caption": caption, "access_token": token}
+                )
+            else:
+                carousel_res = requests.post(
+                    f"https://graph.facebook.com/v19.0/{ig_user_id}/media",
+                    params={
+                        "media_type": "CAROUSEL",
+                        "children": ",".join(media_ids),
+                        "caption": caption,
+                        "access_token": token
+                    }
+                ).json()
+
+                final_creation_id = carousel_res.get("id")
+                if not final_creation_id:
+                    raise Exception(f"Carousel creation failed: {carousel_res}")
+
+            # --- PHASE 3: Wait for Processing ---
             status_url = f"https://graph.facebook.com/v19.0/{final_creation_id}"
-            for i in range(12): 
-                check = requests.get(status_url, params={"fields": "status_code", "access_token": token}).json()
-                status = check.get("status_code")
-                print(f"[DEBUG] Status check {i}: {status}")
-                
-                if status == "FINISHED":
+            for _ in range(15):
+                check = requests.get(status_url, params={
+                    "fields": "status_code",
+                    "access_token": token
+                }).json()
+
+                if check.get("status_code") == "FINISHED":
                     break
-                elif status == "ERROR":
-                    raise Exception(f"Instagram processing failed: {check}")
-                
+                elif check.get("status_code") == "ERROR":
+                    raise Exception(f"Processing error: {check}")
+
                 time.sleep(3)
 
-            # Final step: Publish
-            publish_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media_publish"
-            publish_res = requests.post(publish_url, params={
-                "creation_id": final_creation_id,
-                "access_token": token
-            }).json()
+            # --- PHASE 4: Publish ---
+            publish_res = requests.post(
+                f"https://graph.facebook.com/v19.0/{ig_user_id}/media_publish",
+                params={"creation_id": final_creation_id, "access_token": token}
+            ).json()
 
             media_id = publish_res.get("id")
             if not media_id:
                 raise Exception(f"Publish failed: {publish_res}")
-            
-            # --- PHASE 4: Get Permalink ---
-            media_info = requests.get(f"https://graph.facebook.com/v19.0/{media_id}", params={
-                "fields": "permalink",
-                "access_token": token
-            }).json()
 
-            print(f"[DEBUG] Instagram Post Successful: {media_info.get('permalink')}")
+            media_info = requests.get(
+                f"https://graph.facebook.com/v19.0/{media_id}",
+                params={"fields": "permalink", "access_token": token}
+            ).json()
+
             return {"platform": "instagram", "url": media_info.get("permalink")}
 
         except Exception as e:
