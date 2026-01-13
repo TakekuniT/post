@@ -62,7 +62,10 @@ class PostManager:
 
 
             return results
-
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
         finally:
             for path in file_paths:
                 if os.path.exists(path):
