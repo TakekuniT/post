@@ -11,6 +11,32 @@ class InstagramService:
         res = supabase.storage.from_(bucket).get_public_url(path)
         return res
    
+    @staticmethod
+    def wait_for_media_ready(media_id: str, token: str, timeout=60):
+        """
+        Instagram fetches media asynchronously.
+        We MUST wait until status_code == FINISHED.
+        """
+        status_url = f"https://graph.facebook.com/v19.0/{media_id}"
+        start = time.time()
+
+        while time.time() - start < timeout:
+            res = requests.get(
+                status_url,
+                params={"fields": "status_code", "access_token": token}
+            ).json()
+
+            status = res.get("status_code")
+            print(f"[DEBUG] IG media {media_id} status:", status)
+
+            if status == "FINISHED":
+                return True
+            if status == "ERROR":
+                raise Exception(f"Instagram processing error: {res}")
+
+            time.sleep(3)
+
+        raise TimeoutError("Instagram media processing timed out")
     
     @staticmethod
     def get_valid_token(user_id: str):
@@ -162,24 +188,23 @@ class InstagramService:
     @staticmethod
     async def upload_photos(user_id: str, supabase_paths: list[str], caption: str):
         """
-        Upload Instagram photos using Supabase-stored images.
+        Upload photos (single or carousel) to Instagram using Supabase-hosted images.
         """
 
         token, ig_user_id = InstagramService.get_valid_token(user_id)
-
         bucket = "photos"
 
         try:
             # --------------------------------------------
-            # STEP 1: Convert Supabase paths → public URLs
+            # STEP 1: Supabase paths → public URLs
             # --------------------------------------------
             image_urls = [
-                supabase.storage.from_(bucket).get_public_url(path)
+                InstagramService.get_public_url(bucket, path)
                 for path in supabase_paths
             ]
 
             # --------------------------------------------
-            # STEP 2: Create IG image containers
+            # STEP 2: Create image containers
             # --------------------------------------------
             media_ids = []
 
@@ -189,26 +214,35 @@ class InstagramService:
                     params={
                         "image_url": url,
                         "is_carousel_item": "true" if len(image_urls) > 1 else "false",
-                        "access_token": token
-                    }
+                        "access_token": token,
+                    },
                 ).json()
 
-                print("[DEBUG] Instagram init response:", res)
+                print("[DEBUG] IG image init:", res)
 
                 if "id" not in res:
-                    raise Exception(f"IG image init failed: {res}")
+                    raise Exception(f"Image container creation failed: {res}")
 
-                media_ids.append(res["id"])
+                media_id = res["id"]
+                media_ids.append(media_id)
 
             # --------------------------------------------
-            # STEP 3: Create final container
+            # STEP 3: WAIT for each image to finish
+            # --------------------------------------------
+            for media_id in media_ids:
+                InstagramService.wait_for_media_ready(media_id, token)
+
+            # --------------------------------------------
+            # STEP 4: Create final container
             # --------------------------------------------
             if len(media_ids) == 1:
                 final_creation_id = media_ids[0]
+
                 requests.post(
                     f"https://graph.facebook.com/v19.0/{final_creation_id}",
-                    params={"caption": caption, "access_token": token}
+                    params={"caption": caption, "access_token": token},
                 )
+
             else:
                 carousel = requests.post(
                     f"https://graph.facebook.com/v19.0/{ig_user_id}/media",
@@ -216,51 +250,42 @@ class InstagramService:
                         "media_type": "CAROUSEL",
                         "children": ",".join(media_ids),
                         "caption": caption,
-                        "access_token": token
-                    }
+                        "access_token": token,
+                    },
                 ).json()
+
+                print("[DEBUG] Carousel init:", carousel)
 
                 if "id" not in carousel:
                     raise Exception(f"Carousel creation failed: {carousel}")
 
                 final_creation_id = carousel["id"]
 
-            # --------------------------------------------
-            # STEP 4: Wait for processing
-            # --------------------------------------------
-            status_url = f"https://graph.facebook.com/v19.0/{final_creation_id}"
-            for _ in range(15):
-                check = requests.get(
-                    status_url,
-                    params={"fields": "status_code", "access_token": token}
-                ).json()
-
-                if check.get("status_code") == "FINISHED":
-                    break
-                elif check.get("status_code") == "ERROR":
-                    raise Exception(f"IG processing error: {check}")
-
-                time.sleep(3)
+                InstagramService.wait_for_media_ready(final_creation_id, token)
 
             # --------------------------------------------
             # STEP 5: Publish
             # --------------------------------------------
             publish = requests.post(
                 f"https://graph.facebook.com/v19.0/{ig_user_id}/media_publish",
-                params={"creation_id": final_creation_id, "access_token": token}
+                params={"creation_id": final_creation_id, "access_token": token},
             ).json()
 
-            media_id = publish.get("id")
-            if not media_id:
+            if "id" not in publish:
                 raise Exception(f"Publish failed: {publish}")
 
+            media_id = publish["id"]
+
+            # --------------------------------------------
+            # STEP 6: Get permalink
+            # --------------------------------------------
             permalink = requests.get(
                 f"https://graph.facebook.com/v19.0/{media_id}",
-                params={"fields": "permalink", "access_token": token}
+                params={"fields": "permalink", "access_token": token},
             ).json().get("permalink")
 
             return {"platform": "instagram", "url": permalink}
 
         except Exception as e:
-            print(f"[IG Photo Error] {str(e)}")
+            print("[IG Photo Error]", str(e))
             return None
