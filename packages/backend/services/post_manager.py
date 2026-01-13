@@ -39,7 +39,7 @@ class PostManager:
             
             user_perms = await SubscriptionService.get_user_permissions(user_id, supabase)
             if not user_perms["non_branded_caption"]:
-                caption += "\nSent via UniCore on iOS #unicore #poweredbyunicore"
+                caption += "\nPosted via UniCore on iOS #unicore #poweredbyunicore"
 
             print(f"DEBUG: supabse_paths: {supabase_paths}")
             print(f"DEBUG: file_paths: {file_paths}")
@@ -109,7 +109,7 @@ class PostManager:
                 return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
             
             if not user_perms["non_branded_caption"]:
-                caption += "\nSent via UniCore on iOS #unicore #poweredbyunicore"
+                caption += "\nPosted via UniCore on iOS #unicore #poweredbyunicore"
 
             if "youtube" in platforms:
                 tasks.append(YouTubeService.upload_video(user_id, file_path, caption, description))
