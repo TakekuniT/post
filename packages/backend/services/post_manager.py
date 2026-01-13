@@ -36,7 +36,7 @@ class PostManager:
             if requested_platforms > user_perms["max_platforms"]:
                 return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
 
-           
+            print(f"DEBUG: supabse_paths: {supabase_paths}")
             if "instagram" in platforms:
                 tasks.append(InstagramService.upload_photos(user_id, supabase_paths, caption))
 
