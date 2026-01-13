@@ -68,7 +68,7 @@ class VideoProcessor:
                 continue
 
             input_path = str(input_path)
-            output_path = f"{input_path}_watermarked.mp4"
+            output_path = input_path.replace(".jpg", "_watermarked.jpg")
 
             filter_str = (
                 f"[1:v]scale=150:-1,format=rgba,colorchannelmixer=aa={opacity}[logo]; "
@@ -89,7 +89,6 @@ class VideoProcessor:
                 output_path
             ]
 
-            print(f"DEBUG: Watermarking photo → video: {input_path}")
 
             try:
                 subprocess.run(command, check=True, capture_output=True, text=True)
