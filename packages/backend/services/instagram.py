@@ -160,6 +160,7 @@ class InstagramService:
         If file_paths has >1 element, it posts a Carousel (Sidecar).
         """
         try:
+            print(f"[DEBUG] Instagram upload photos for {user_id}")
             token, ig_user_id = InstagramService.get_valid_token(user_id)
             media_ids = []
 
@@ -181,7 +182,7 @@ class InstagramService:
                     "access_token": token
                 }
                 init_res = requests.post(init_url, params=init_params).json()
-                
+                print(f"[DEBUG] Instagram init response: {init_res}")
                 container_id = init_res.get("id")
                 upload_url = f"https://rupload.facebook.com/ig-api-upload/{container_id}"
 
@@ -195,7 +196,7 @@ class InstagramService:
                         "Content-Type": "image/jpeg" # Instagram prefers jpeg
                     }
                     upload_res = requests.post(upload_url, data=f, headers=headers).json()
-                
+                print(f"[DEBUG] Instagram upload response: {upload_res}")
                 if upload_res.get("success"):
                     media_ids.append(container_id)
 
@@ -231,7 +232,7 @@ class InstagramService:
                 if check.get("status_code") == "FINISHED":
                     break
                 time.sleep(3)
-
+            print(f"[DEBUG] Instagram publish response: {check}")
             publish_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media_publish"
             publish_res = requests.post(publish_url, params={
                 "creation_id": final_creation_id,
