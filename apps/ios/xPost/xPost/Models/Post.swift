@@ -34,7 +34,8 @@ struct PostModel: Identifiable, Codable, Equatable {
     let scheduled_at: Date?
     let status: String
     let caption: String?
-    let video_path: String
+    let video_path: String?
+    let photo_paths: [String]?
     let platforms: [String]
     let description: String?
     let user_id: UUID
