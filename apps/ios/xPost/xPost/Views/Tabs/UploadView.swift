@@ -13,7 +13,8 @@ struct UploadView: View {
     @State private var monthlyPostCount: Int = 0
     @State private var isShowingUpgradeSheet: Bool = false
     
-    @State private var showCreateSheet = false
+    @State private var showCreateVideoSheet = false
+    @State private var showCreatePhotoSheet = false
     @State private var animateItems = false
     @State private var bounceTrigger = 0
     @State private var animationPhase: Int = 0
@@ -135,7 +136,7 @@ struct UploadView: View {
                                 delay: 0.1
                             ) {
                                 Haptics.selection()
-                                showCreateSheet = true
+                                showCreateVideoSheet = true
                             }
                             
                             // Picture (Placeholder)
@@ -147,7 +148,7 @@ struct UploadView: View {
                                 delay: 0.2
                             ) {
                                 Haptics.selection()
-                                // Logic for pictures coming soon
+                                showCreatePhotoSheet = true
                             }
                             
                             // Text (Placeholder)
@@ -172,8 +173,11 @@ struct UploadView: View {
                 }
             }
             //.navigationTitle("Upload")
-            .sheet(isPresented: $showCreateSheet) {
+            .sheet(isPresented: $showCreateVideoSheet) {
                 CreatePostView()
+            }
+            .sheet(isPresented: $showCreatePhotoSheet) {
+                CreatePhotoPostView()
             }
             .onAppear {
                 startAnimations()
@@ -184,9 +188,9 @@ struct UploadView: View {
             }
           
         }
-        .sheet(isPresented: $showCreateSheet) {
-            CreatePostView()
-        }
+//        .sheet(isPresented: $showCreateSheet) {
+//            CreatePostView()
+//        }
         // Added the Upgrade Sheet exactly like SocialConnectView
         .sheet(isPresented: $isShowingUpgradeSheet) {
             UpgradeTierView(currentTier: userTier, activeTab: $activeTab)

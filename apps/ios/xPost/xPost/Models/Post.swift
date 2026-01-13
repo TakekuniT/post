@@ -17,6 +17,16 @@ struct Post: Codable {
     var scheduled_at: Date?
 }
 
+
+struct PhotoPost: Codable {
+    var user_id: String
+    var caption: String
+    var photo_paths: [String]
+    var platforms: [String]
+    var scheduled_at: Date?
+}
+
+
 struct PostModel: Identifiable, Codable, Equatable {
     // This allows ForEach to track your posts using the database ID
     let id: Int64

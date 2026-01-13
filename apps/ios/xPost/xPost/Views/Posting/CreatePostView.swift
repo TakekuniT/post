@@ -57,6 +57,12 @@ struct CreatePostView: View {
                     VStack(spacing: 24) {
                         SectionHeader(title: "Content", icon: "video.badge.plus")
                         videoSelector
+                        
+                        SectionHeader(title: "Publish To", icon: "paperplane.fill")
+                        platformSelectionGrid
+                        
+                        SectionHeader(title: "Schedule", icon: "calendar.badge.clock")
+                        scheduleToggle
 
                         SectionHeader(title: "Details", icon: "text.alignleft")
                         VStack(spacing: 16) {
@@ -79,13 +85,9 @@ struct CreatePostView: View {
                                 // Apply the shake here!
                                 .offset(x: shakeOffset)
                         }
-                        SectionHeader(title: "Schedule", icon: "calendar.badge.clock")
-                        scheduleToggle
+                        
 
-                        SectionHeader(title: "Publish To", icon: "paperplane.fill")
                         
-                        
-                        platformSelectionGrid
                     }
                     .padding(20)
                 }
