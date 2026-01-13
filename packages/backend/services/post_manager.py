@@ -15,12 +15,14 @@ class PostManager:
     async def distribute_photos(post_id: str, user_id: str, file_paths: list, caption: str, platforms: list):
         original_paths = []
         supabase_paths = []
+        print("[DEBUG] distribute photos")
         for path in file_paths:
             original_paths.append(path)
             supabase_path = os.path.basename(path)
             supabase_paths.append(supabase_path)
         try:
             tasks = []
+            print("[DEBUG] getting user perms")
             user_perms = await SubscriptionService.get_user_permissions(user_id, supabase)
             requested_platforms = len(platforms)
             print(f"DEBUG: User perms for watermark: {user_perms.get('no_watermark')}")
