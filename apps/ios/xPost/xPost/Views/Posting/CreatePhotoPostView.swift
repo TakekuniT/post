@@ -75,7 +75,7 @@ struct CreatePhotoPostView: View {
     // MARK: - Subviews
     private var contentStack: some View {
         VStack(spacing: 24) {
-            SectionHeader(title: "Photos", icon: "photo.on.rectangle.angled")
+            SectionHeader(title: "Photos", icon: "photo.badge.plus")
             photoSelector
             
             if !selectedImages.isEmpty {
@@ -121,10 +121,15 @@ struct CreatePhotoPostView: View {
     private var photoSelector: some View {
         PhotosPicker(selection: $selectedItems, maxSelectionCount: 10, matching: .images) {
             VStack(spacing: 12) {
-                Image(systemName: selectedImages.isEmpty ? "plus.viewfinder" : "photo.stack.fill")
+                Image(systemName: selectedItems.isEmpty ? "photo.on.rectangle.angled" : "checkmark.circle.fill")
                     .font(.system(size: 32))
                     .foregroundColor(.brandPurple)
-                
+                    .scaleEffect(selectedItems.isEmpty ? 1.0 : 1.2)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: selectedItems.count)
+//                Image(systemName: selectedImages.isEmpty ? "plus.viewfinder" : "photo.stack.fill")
+//                    .font(.system(size: 32))
+//                    .foregroundColor(.brandPurple)
+//                
                 Text(selectedImages.isEmpty ? "Select Photos" : "\(selectedImages.count) Photos Selected")
                     .font(.system(.headline, design: .rounded))
                     .foregroundColor(.primary)
