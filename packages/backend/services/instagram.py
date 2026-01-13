@@ -171,7 +171,8 @@ class InstagramService:
                 # 1. Initialize container for an IMAGE
                 init_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media"
                 
-                # IMPORTANT: We add media_type=IMAGE to bypass the image_url requirement
+                # CRITICAL FIX: Add "media_type": "IMAGE" to bypass the image_url requirement
+                # Also, do NOT include an empty "image_url" key.
                 init_params = {
                     "media_type": "IMAGE", 
                     "is_carousel_item": "true" if len(file_paths) > 1 else "false",
@@ -188,7 +189,6 @@ class InstagramService:
                     continue
 
                 # 2. Upload Bytes via Rupload
-                # The hostname changes for the binary push
                 upload_url = f"https://rupload.facebook.com/ig-api-upload/{container_id}"
                 file_size = os.path.getsize(path)
                 
@@ -199,7 +199,7 @@ class InstagramService:
                         "file_size": str(file_size),
                         "Content-Type": "image/jpeg" 
                     }
-                    # Push the raw bytes
+                    # Streaming the binary file
                     upload_res = requests.post(upload_url, data=f, headers=headers).json()
                 
                 print(f"[DEBUG] Instagram binary upload response: {upload_res}")
@@ -214,13 +214,13 @@ class InstagramService:
             final_creation_id = None
             
             if len(media_ids) == 1:
-                # For single photo, the item container becomes the creation ID
-                # We update it to include the caption
+                # For single photo, the item container is the creation ID
+                # Update it to include the caption
                 final_creation_id = media_ids[0]
                 update_url = f"https://graph.facebook.com/v19.0/{final_creation_id}"
                 requests.post(update_url, params={"caption": caption, "access_token": token})
             else:
-                # For Carousel, we create a parent container linking the children
+                # For Carousel, create a parent container linking children
                 carousel_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media"
                 carousel_params = {
                     "media_type": "CAROUSEL",
@@ -232,9 +232,8 @@ class InstagramService:
                 final_creation_id = carousel_res.get("id")
 
             # --- PHASE 3: Wait & Publish ---
-            # Wait for IG to process the binary images
             status_url = f"https://graph.facebook.com/v19.0/{final_creation_id}"
-            for i in range(12): # Wait up to 36 seconds
+            for i in range(12): 
                 check = requests.get(status_url, params={"fields": "status_code", "access_token": token}).json()
                 status = check.get("status_code")
                 print(f"[DEBUG] Status check {i}: {status}")
@@ -246,7 +245,7 @@ class InstagramService:
                 
                 time.sleep(3)
 
-            # Final step: Publish the creation ID to the user's feed
+            # Final step: Publish
             publish_url = f"https://graph.facebook.com/v19.0/{ig_user_id}/media_publish"
             publish_res = requests.post(publish_url, params={
                 "creation_id": final_creation_id,
