@@ -13,12 +13,13 @@ from utils.video_processor import VideoProcessor
 class PostManager:
     @staticmethod
     async def distribute_photos(post_id: str, user_id: str, file_paths: list, caption: str, platforms: list):
-        original_paths = []
+       
         supabase_paths = []
+        full_supabase_paths = []
         print("[DEBUG] distribute photos")
         
         for path in file_paths:
-            original_paths.append(path)
+            full_supabase_paths.append(path)
             supabase_path = os.path.basename(path)
             supabase_paths.append(supabase_path)
         try:
@@ -30,7 +31,8 @@ class PostManager:
 
             if not user_perms.get("no_watermark", False):
                 watermarked_paths = VideoProcessor.add_photo_watermark(file_paths)
-                supabase_paths = [os.path.basename(path) for path in watermarked_paths]
+                supabase_paths = [path.replace(".jpg", "_watermarked.jpg") for path in supabase_paths]
+                
                 print(f"DEBUG: Watermarking complete. New paths: {supabase_paths}")
             else:
                 print(f"DEBUG: Watermarking skipped. Paths: {supabase_paths}")
@@ -47,10 +49,10 @@ class PostManager:
                 tasks.append(InstagramService.upload_photos(user_id, supabase_paths, caption))
 
             if "facebook" in platforms:
-                tasks.append(FacebookService.upload_photos(user_id, supabase_paths, caption))
+                tasks.append(FacebookService.upload_photos(user_id, full_supabase_paths, caption))
 
             if "linkedin" in platforms:
-                tasks.append(LinkedInService.upload_photos(user_id, supabase_paths, caption))
+                tasks.append(LinkedInService.upload_photos(user_id, full_supabase_paths, caption))
             
             # Run all uploads at the same time!
             results = await asyncio.gather(*tasks, return_exceptions=True)
