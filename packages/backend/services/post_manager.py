@@ -27,7 +27,7 @@ class PostManager:
 
             if not user_perms.get("no_watermark", False):
                 watermarked_paths = VideoProcessor.add_photo_watermark(file_paths)
-                supabase_paths = (os.path.basename(path) for path in watermarked_paths)
+                supabase_paths = [os.path.basename(path) for path in watermarked_paths]
                 print(f"DEBUG: Watermarking complete. New paths: {supabase_paths}")
             else:
                 print(f"DEBUG: Watermarking skipped. Paths: {supabase_paths}")
