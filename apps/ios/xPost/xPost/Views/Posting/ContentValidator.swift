@@ -54,11 +54,14 @@ struct ContentValidator {
 enum PostError: LocalizedError {
     case emptyCaption
     case tooLong(platform: String, limit: Int)
+    case authError
     
     var errorDescription: String? {
         switch self {
         case .emptyCaption: return "Caption cannot be empty."
         case .tooLong(let p, let l): return "\(p) captions must be under \(l) characters."
+        case .authError: return "You must be logged in to post."
         }
+        
     }
 }
