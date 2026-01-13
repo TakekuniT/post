@@ -62,14 +62,17 @@ class PostManager:
 
 
             return results
-
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
         finally:
             for path in file_paths:
                 if os.path.exists(path):
                     os.remove(path)
                     print(f"DEBUG: Removed local file {path}")
             try:
-                supabase.storage.from_("videos").remove(supabase_paths)
+                supabase.storage.from_("photos").remove(supabase_paths)
                 print(f"DEBUG: Removed {supabase_paths} from Supabase Storage")
             except Exception as e:
                 print(f"Cleanup Error: {str(e)}")
