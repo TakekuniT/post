@@ -44,7 +44,7 @@ class PostManager:
             print(f"DEBUG: supabse_paths: {supabase_paths}")
             print(f"DEBUG: file_paths: {file_paths}")
             if "instagram" in platforms:
-                tasks.append(InstagramService.upload_photos(user_id, file_paths, caption))
+                tasks.append(InstagramService.upload_photos(user_id, supabase_paths, caption))
 
             if "facebook" in platforms:
                 tasks.append(FacebookService.upload_photos(user_id, file_paths, caption))
