@@ -113,6 +113,7 @@ async def publish_photos(
         local_paths.append(local_path)
     
     try:
+        print(f"DEBUG: Uploading {len(local_paths)} photos...")
         background_tasks.add_task(
             PostManager.distribute_photos,
             post_id, # pass post id to background
@@ -121,6 +122,7 @@ async def publish_photos(
             publish_request.caption,
             publish_request.platforms
         )
+        print(f"DEBUG: Photo upload complete.")
         return {"status": "Processing", "message": f"Immediate upload started for {publish_request.platforms}"}
     except Exception as e:
         print(f"Error: {str(e)}")
