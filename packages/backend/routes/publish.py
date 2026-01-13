@@ -112,21 +112,24 @@ async def publish_photos(
         local_path = await get_local_photo(photo_path)
         local_paths.append(local_path)
     
-    try:
-        print(f"DEBUG: Uploading {len(local_paths)} photos...")
-        background_tasks.add_task(
-            PostManager.distribute_photos,
-            post_id, # pass post id to background
-            safe_user_id,
-            local_paths,
-            publish_request.caption,
-            publish_request.platforms
-        )
-        print(f"DEBUG: Photo upload complete.")
-        return {"status": "Processing", "message": f"Immediate upload started for {publish_request.platforms}"}
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return {"status": "Error", "message": f"Failed to distribute photos: {str(e)}"}
+    if not publish_request.scheduled_at:
+        try:
+            print(f"DEBUG: Uploading {len(local_paths)} photos...")
+            background_tasks.add_task(
+                PostManager.distribute_photos,
+                post_id, # pass post id to background
+                safe_user_id,
+                local_paths,
+                publish_request.caption,
+                publish_request.platforms
+            )
+            print(f"DEBUG: Photo upload complete.")
+            return {"status": "Processing", "message": f"Immediate upload started for {publish_request.platforms}"}
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return {"status": "Error", "message": f"Failed to distribute photos: {str(e)}"}
+    else:
+        return {"status": "Scheduled", "message": f"Post queued for {publish_request.platforms}"}
 
 
 @router.post("")
@@ -182,7 +185,8 @@ async def publish_video(
         "video_path": publish_request.video_path,
         "platforms": publish_request.platforms,
         "scheduled_at": publish_request.scheduled_at.isoformat() if publish_request.scheduled_at else None,
-        "status": "pending" if publish_request.scheduled_at else "published",
+        # "status": "pending" if publish_request.scheduled_at else "published",
+        "status": "pending" if publish_request.scheduled_at else "uploading",
         "platform_links": {}
     }
 

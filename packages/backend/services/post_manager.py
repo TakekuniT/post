@@ -130,7 +130,8 @@ class PostManager:
             # Update the row in Supabase using the post_id
             if links_to_save:
                 supabase.table("posts").update({
-                    "platform_links": links_to_save
+                    "platform_links": links_to_save,
+                    "status": "published" # added
                 }).eq("id", post_id).execute()
 
 
