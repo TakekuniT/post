@@ -37,14 +37,15 @@ class PostManager:
                 return {"error": f"Upgrade to reach more than {user_perms['max_platforms']} platforms."}
 
             print(f"DEBUG: supabse_paths: {supabase_paths}")
+            print(f"DEBUG: file_paths: {file_paths}")
             if "instagram" in platforms:
-                tasks.append(InstagramService.upload_photos(user_id, supabase_paths, caption))
+                tasks.append(InstagramService.upload_photos(user_id, file_paths, caption))
 
             if "facebook" in platforms:
-                tasks.append(FacebookService.upload_photos(user_id, supabase_paths, caption))
+                tasks.append(FacebookService.upload_photos(user_id, file_paths, caption))
 
             if "linkedin" in platforms:
-                tasks.append(LinkedInService.upload_photos(user_id, supabase_paths, caption))
+                tasks.append(LinkedInService.upload_photos(user_id, file_paths, caption))
             
             # Run all uploads at the same time!
             results = await asyncio.gather(*tasks, return_exceptions=True)
