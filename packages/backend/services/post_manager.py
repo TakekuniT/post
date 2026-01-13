@@ -15,12 +15,14 @@ class PostManager:
     async def distribute_photos(post_id: str, user_id: str, file_paths: list, caption: str, platforms: list):
        
         supabase_paths = []
+        original_supabase_paths = []
         full_supabase_paths = []
         print("[DEBUG] distribute photos")
         
         for path in file_paths:
             full_supabase_paths.append(path)
             supabase_path = os.path.basename(path)
+            original_supabase_paths.append(supabase_path)
             supabase_paths.append(supabase_path)
         try:
             tasks = []
@@ -30,7 +32,7 @@ class PostManager:
             print(f"DEBUG: User perms for watermark: {user_perms.get('no_watermark')}")
 
             if not user_perms.get("no_watermark", False):
-                watermarked_paths = VideoProcessor.add_photo_watermark(file_paths)
+                full_supabase_paths = VideoProcessor.add_photo_watermark(file_paths)
                 supabase_paths = [path.replace(".jpg", "_watermarked.jpg") for path in supabase_paths]
                 
                 print(f"DEBUG: Watermarking complete. New paths: {supabase_paths}")
@@ -76,13 +78,19 @@ class PostManager:
             import traceback
             traceback.print_exc()
         finally:
-            for path in file_paths:
+            for path in file_paths: # removes the original local files
+                if os.path.exists(path):
+                    os.remove(path)
+                    print(f"DEBUG: Removed local file {path}")
+            for path in full_supabase_paths: # removes the watermarked supabase files
                 if os.path.exists(path):
                     os.remove(path)
                     print(f"DEBUG: Removed local file {path}")
             try:
                 supabase.storage.from_("photos").remove(supabase_paths)
+                supabase.storage.from_("photos").remove(original_supabase_paths)
                 print(f"DEBUG: Removed {supabase_paths} from Supabase Storage")
+                print(f"DEBUG: Removed {original_supabase_paths} from Supabase Storage")
             except Exception as e:
                 print(f"Cleanup Error: {str(e)}")
         
