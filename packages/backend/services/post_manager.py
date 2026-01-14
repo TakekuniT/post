@@ -14,9 +14,9 @@ class PostManager:
     @staticmethod
     async def distribute_photos(post_id: str, user_id: str, file_paths: list, caption: str, platforms: list):
        
-        supabase_paths = []
-        original_supabase_paths = []
-        full_supabase_paths = []
+        supabase_paths = [] # may be watermarked paths
+        original_supabase_paths = [] # non-watermarked paths
+        full_supabase_paths = [] # full directory paths
         print("[DEBUG] distribute photos")
         
         for path in file_paths:
@@ -87,7 +87,7 @@ class PostManager:
                     os.remove(path)
                     print(f"DEBUG: Removed local file {path}")
             try:
-                supabase.storage.from_("photos").remove(supabase_paths)
+                #supabase.storage.from_("photos").remove(supabase_paths)
                 supabase.storage.from_("photos").remove(original_supabase_paths)
                 print(f"DEBUG: Removed {supabase_paths} from Supabase Storage")
                 print(f"DEBUG: Removed {original_supabase_paths} from Supabase Storage")
