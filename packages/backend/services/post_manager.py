@@ -84,10 +84,10 @@ class PostManager:
                     print(f"DEBUG: Removed local file {path}")
             for path in full_supabase_paths: # removes the watermarked supabase files
                 if os.path.exists(path):
-                    os.remove(path)
+                    #os.remove(path)
                     print(f"DEBUG: Removed local file {path}")
             try:
-                #supabase.storage.from_("photos").remove(supabase_paths)
+                supabase.storage.from_("photos").remove(supabase_paths)
                 supabase.storage.from_("photos").remove(original_supabase_paths)
                 print(f"DEBUG: Removed {supabase_paths} from Supabase Storage")
                 print(f"DEBUG: Removed {original_supabase_paths} from Supabase Storage")

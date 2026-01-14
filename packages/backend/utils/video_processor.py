@@ -77,15 +77,26 @@ class VideoProcessor:
                 "fontcolor=white@0.5:fontsize=20:x=W-tw-20:y=H-th-20"
             )
 
+            # command = [
+            #     "ffmpeg", "-y",
+            #     "-i", input_path,
+            #     "-i", logo_path,
+            #     "-filter_complex", filter_str,
+            #     "-frames:v", "1",        # single-frame video
+            #     "-c:v", "libx264",
+            #     "-pix_fmt", "yuv420p",   # social-platform safe
+            #     "-movflags", "+faststart",
+            #     output_path
+            # ]
             command = [
                 "ffmpeg", "-y",
                 "-i", input_path,
                 "-i", logo_path,
                 "-filter_complex", filter_str,
-                "-frames:v", "1",        # single-frame video
-                "-c:v", "libx264",
-                "-pix_fmt", "yuv420p",   # social-platform safe
-                "-movflags", "+faststart",
+                # REMOVED: -frames:v 1
+                # REMOVED: -c:v libx264 (This was the culprit)
+                # REMOVED: -movflags +faststart
+                "-q:v", "2",  # Quality scale (2-5 is high quality for JPEGs)
                 output_path
             ]
 
