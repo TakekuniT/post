@@ -23,7 +23,7 @@ class VideoProcessor:
         filter_str = (
             f"[1:v]scale=150:-1,format=rgba,colorchannelmixer=aa={opacity}[logo]; "
             "[0:v][logo]overlay=W-w-20:H-h-60[v_logo]; "
-            "[v_logo]drawtext=text='UniPost on iOS':fontcolor=white@0.5:fontsize=20:x=W-tw-20:y=H-th-20"
+            "[v_logo]drawtext=text='UniCore on iOS':fontcolor=white@0.5:fontsize=20:x=W-tw-20:y=H-th-20"
         )
 
         command = [
@@ -73,7 +73,7 @@ class VideoProcessor:
             filter_str = (
                 f"[1:v]scale=150:-1,format=rgba,colorchannelmixer=aa={opacity}[logo]; "
                 "[0:v][logo]overlay=W-w-20:H-h-60[v_logo]; "
-                "[v_logo]drawtext=text='UniPost on iOS':"
+                "[v_logo]drawtext=text='UniCore on iOS':"
                 "fontcolor=white@0.5:fontsize=20:x=W-tw-20:y=H-th-20"
             )
 
@@ -130,9 +130,15 @@ class VideoProcessor:
 
         # 2. Create Branded Crop locally
         logo_path = str(Path(__file__).resolve().parents[1] / "assets" / "logo.png")
+        # filter_complex = (
+        #     f"[1:v]scale=150:-1,format=rgba,colorchannelmixer=aa=0.5[logo]; "
+        #     "[0:v][logo]overlay=W-w-20:H-h-60"
+        # )
         filter_complex = (
             f"[1:v]scale=150:-1,format=rgba,colorchannelmixer=aa=0.5[logo]; "
-            "[0:v][logo]overlay=W-w-20:H-h-60"
+            "[0:v][logo]overlay=W-w-20:H-h-60[v_logo]; "
+            "[v_logo]drawtext=text='UniCore on iOS':"
+            "fontcolor=white@0.5:fontsize=20:x=W-tw-20:y=H-th-20"
         )
         subprocess.run([
             "ffmpeg", "-y", "-i", clean_out, "-i", logo_path,
