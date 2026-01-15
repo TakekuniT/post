@@ -110,4 +110,34 @@ class VideoProcessor:
                 output_paths.append(input_path)
 
         return output_paths
+    
+    @staticmethod
+    def process_photo_for_social(input_path: str):
+        path_obj = Path(input_path)
+        # These create the local filenames
+        clean_out = str(path_obj.with_name(f"{path_obj.stem}_cropped.jpg"))
+        branded_out = str(path_obj.with_name(f"{path_obj.stem}_cropped_watermarked.jpg"))
+        
+        # Square crop filter
+        crop_filter = "crop='min(iw,ih)':'min(iw,ih)'"
+        
+        # 1. Create Clean Crop locally
+        subprocess.run([
+            "ffmpeg", "-y", "-i", input_path,
+            "-vf", f"{crop_filter},format=yuvj420p", 
+            "-q:v", "2", clean_out
+        ], check=True, capture_output=True)
 
+        # 2. Create Branded Crop locally
+        logo_path = str(Path(__file__).resolve().parents[1] / "assets" / "logo.png")
+        filter_complex = (
+            f"[1:v]scale=150:-1,format=rgba,colorchannelmixer=aa=0.5[logo]; "
+            "[0:v][logo]overlay=W-w-20:H-h-60"
+        )
+        subprocess.run([
+            "ffmpeg", "-y", "-i", clean_out, "-i", logo_path,
+            "-filter_complex", filter_complex, 
+            "-pix_fmt", "yuvj420p", "-q:v", "2", branded_out
+        ], check=True, capture_output=True)
+
+        return clean_out, branded_out
