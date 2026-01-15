@@ -47,8 +47,11 @@ class PostManager:
 
             print(f"DEBUG: supabse_paths: {supabase_paths}")
             print(f"DEBUG: file_paths: {file_paths}")
+            print(f"DEBUG: full_supabase_paths: {full_supabase_paths}")
             if "instagram" in platforms:
-                tasks.append(InstagramService.upload_photos(user_id, supabase_paths, caption))
+                print(f"DEBUG: Instagram uploading...")
+                print(f"platforms: {platforms}")
+                tasks.append(InstagramService.upload_photos(user_id, full_supabase_paths, caption))
 
             if "facebook" in platforms:
                 tasks.append(FacebookService.upload_photos(user_id, full_supabase_paths, caption))
@@ -84,10 +87,10 @@ class PostManager:
                     print(f"DEBUG: Removed local file {path}")
             for path in full_supabase_paths: # removes the watermarked supabase files
                 if os.path.exists(path):
-                    #os.remove(path)
+                    os.remove(path)
                     print(f"DEBUG: Removed local file {path}")
             try:
-                supabase.storage.from_("photos").remove(supabase_paths)
+                #supabase.storage.from_("photos").remove(supabase_paths)
                 supabase.storage.from_("photos").remove(original_supabase_paths)
                 print(f"DEBUG: Removed {supabase_paths} from Supabase Storage")
                 print(f"DEBUG: Removed {original_supabase_paths} from Supabase Storage")
