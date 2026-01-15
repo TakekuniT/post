@@ -100,11 +100,11 @@ class PostManager:
                     print(f"DEBUG: Removed local file {path}")
             for path in clean_cropped_paths: # removes the watermarked supabase files
                 if os.path.exists(path):
-                    #os.remove(path)
+                    os.remove(path)
                     print(f"DEBUG: Removed local file {path}")
             for path in watermarked_cropped_paths: # removes the watermarked supabase files
                 if os.path.exists(path):
-                    #os.remove(path)
+                    os.remove(path)
                     print(f"DEBUG: Removed local file {path}")
             try:
                 supabase.storage.from_("photos").remove(supabase_paths)
@@ -114,7 +114,7 @@ class PostManager:
                     cropped_base_paths.append(os.path.basename(path)) 
                 for path in watermarked_cropped_paths:
                     cropped_base_paths.append(os.path.basename(path))
-                #supabase.storage.from_("photos").remove(cropped_base_paths)
+                supabase.storage.from_("photos").remove(cropped_base_paths)
                 print(f"DEBUG: Removed {cropped_base_paths} from Supabase Storage")
                 print(f"DEBUG: Removed {supabase_paths} from Supabase Storage")
                 print(f"DEBUG: Removed {original_supabase_paths} from Supabase Storage")
