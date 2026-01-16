@@ -298,8 +298,31 @@ struct CreatePhotoPostView: View {
     }
 
     private func handleUpload() {
+        
+        let cleanCaption = ContentValidator.sanitize(caption)
+        
+        do {
+            try ContentValidator.validate(caption: cleanCaption, description: "", platforms: selectedPlatforms)
+            if selectedImages.isEmpty {
+                throw PostError.emptyCaption
+            }
+            
+        } catch let error as PostError {
+            Task { @MainActor in
+                withErrorAnimation {
+                    self.errorMessage = error.localizedDescription
+                }
+            }
+        } catch {
+            withErrorAnimation {
+                self.errorMessage = "An unexpected error occurred."
+            }
+            return
+        }
         isUploading = true
         errorMessage = ""
+        
+        
 
         Task {
             do {
@@ -318,7 +341,7 @@ struct CreatePhotoPostView: View {
                 // 2. Create the PhotoPost struct
                 let photoPost = PhotoPost(
                     user_id: currentUserId,
-                    caption: caption,
+                    caption: cleanCaption,
                     photo_paths: uploadedPaths,
                     platforms: Array(selectedPlatforms),
                     scheduled_at: isScheduled ? scheduleDate : nil
