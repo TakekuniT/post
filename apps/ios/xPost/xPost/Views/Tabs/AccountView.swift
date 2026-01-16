@@ -321,8 +321,14 @@ struct AccountView: View {
             
             
         }
-
-        .sheet(isPresented: $showSafari) {
+        // on dismiss function added to rerender plan
+        .sheet(isPresented: $showSafari, onDismiss: {
+            Task {
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 second delay
+                await fetchUserData()
+                self.userTier = await getCurrentTier()
+            }
+        }) {
             if let url = checkoutURL {
                 SafariView(url: url)
                     .ignoresSafeArea()
