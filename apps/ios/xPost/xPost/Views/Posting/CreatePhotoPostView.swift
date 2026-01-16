@@ -28,8 +28,11 @@ struct CreatePhotoPostView: View {
     @State private var errorMessage = ""
     @State private var shakeOffset: CGFloat = 0
     
-    let platforms = ["instagram", "facebook", "linkedin", "tiktok"]
-    let platformAssets = ["instagram": "instagram", "facebook": "facebook", "linkedin": "linkedin-in", "tiktok": "tiktok"]
+    @State private var showUpgradeHint = false
+
+    
+    let platforms = ["instagram", "facebook", "linkedin"]
+    let platformAssets = ["instagram": "instagram", "facebook": "facebook", "linkedin": "linkedin-in"]
     let apiService = APIService()
 
     var body: some View {
@@ -212,6 +215,31 @@ struct CreatePhotoPostView: View {
             }
             .disabled(isFreeTier)
             .tint(.brandPurple)
+            .onTapGesture {
+                if isFreeTier {
+                    Haptics.error()
+                    withAnimation(.spring()) {
+                        showUpgradeHint = true
+                    }
+                    // Auto-hide the hint after 3 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        withAnimation { showUpgradeHint = false }
+                    }
+                }
+            }
+            
+            if showUpgradeHint && isFreeTier {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .foregroundColor(.brandPurple)
+                    Text("Upgrade to unlock scheduling")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.brandPurple)
+                    Spacer()
+                }
+                .padding(.top, 4)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
             
             if isScheduled && !isFreeTier {
                 DatePicker("Select Time", selection: $scheduleDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
@@ -222,6 +250,9 @@ struct CreatePhotoPostView: View {
         .background(.ultraThinMaterial)
         .cornerRadius(16)
         .opacity(isFreeTier ? 0.6 : 1.0)
+        
+        
+        
     }
     
     @ViewBuilder

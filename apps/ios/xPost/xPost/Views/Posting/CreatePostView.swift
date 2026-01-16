@@ -28,6 +28,7 @@ struct CreatePostView: View {
     @State private var userTier: String = "loading"
     @State private var errorMessage = ""
     @State private var shakeOffset: CGFloat = 0
+    @State private var showUpgradeHint = false
     
     
     let platforms = ["youtube", "instagram", "tiktok", "facebook", "linkedin"]
@@ -219,9 +220,28 @@ struct CreatePostView: View {
                 .onTapGesture {
                     if isFreeTier {
                         Haptics.error()
-                        //isShowingUpgradeSheet = true
+                        withAnimation(.spring()) {
+                            showUpgradeHint = true
+                        }
+                        // Auto-hide the hint after 3 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            withAnimation { showUpgradeHint = false }
+                        }
                     }
                 }
+            }
+            
+            if showUpgradeHint && isFreeTier {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .foregroundColor(.brandPurple)
+                    Text("Upgrade to unlock scheduling")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.brandPurple)
+                    Spacer()
+                }
+                .padding(.top, 4)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
             
             if isScheduled && !isFreeTier {
