@@ -186,21 +186,34 @@ class InstagramService:
             return None
         
     @staticmethod
-    async def upload_photos(user_id: str, supabase_paths: list[str], caption: str):
+    async def upload_photos(user_id: str, full_file_paths: list[str], caption: str):
         """
         Upload photos (single or carousel) to Instagram using Supabase-hosted images.
         """
-
+        base_path = [os.path.basename(p) for p in full_file_paths]
+        print(f"DEBUG: base_path: {base_path}")
         token, ig_user_id = InstagramService.get_valid_token(user_id)
         bucket = "photos"
 
+        # upload supabase_paths to supabase storage
+        for local_path, storage_name in zip(full_file_paths, base_path):
+            with open(local_path, "rb") as f:
+                res = supabase.storage.from_(bucket).upload(
+                    path=storage_name, 
+                    file=f, 
+                    file_options={
+                        "upsert": "true",
+                        "content-type": "image/jpeg"  # Explicitly set this!
+                    }
+                )
+            print(f"DEBUG: Supabase upload success: {storage_name}")
         try:
             # --------------------------------------------
             # STEP 1: Supabase paths → public URLs
             # --------------------------------------------
             image_urls = [
                 InstagramService.get_public_url(bucket, path)
-                for path in supabase_paths
+                for path in base_path
             ]
 
             # --------------------------------------------

@@ -13,17 +13,24 @@ from utils.video_processor import VideoProcessor
 class PostManager:
     @staticmethod
     async def distribute_photos(post_id: str, user_id: str, file_paths: list, caption: str, platforms: list):
-       
+        
         supabase_paths = [] # may be watermarked paths
         original_supabase_paths = [] # non-watermarked paths
         full_supabase_paths = [] # full directory paths
         print("[DEBUG] distribute photos")
-        
+        clean_cropped_paths = []
+        watermarked_cropped_paths = []
+
         for path in file_paths:
             full_supabase_paths.append(path)
             supabase_path = os.path.basename(path)
             original_supabase_paths.append(supabase_path)
             supabase_paths.append(supabase_path)
+            clean_path, branded_path = VideoProcessor.process_photo_for_social(path)
+            clean_cropped_paths.append(clean_path)
+            watermarked_cropped_paths.append(branded_path)
+
+        
         try:
             tasks = []
             print("[DEBUG] getting user perms")
@@ -31,6 +38,9 @@ class PostManager:
             requested_platforms = len(platforms)
             print(f"DEBUG: User perms for watermark: {user_perms.get('no_watermark')}")
 
+            print(f"DEBUG: watermarked_cropped_paths: {watermarked_cropped_paths}")
+            print(f"DEBUG: clean_cropped_paths: {clean_cropped_paths}")
+            paths_to_upload = watermarked_cropped_paths if not user_perms.get("no_watermark") else clean_cropped_paths
             if not user_perms.get("no_watermark", False):
                 full_supabase_paths = VideoProcessor.add_photo_watermark(file_paths)
                 supabase_paths = [path.replace(".jpg", "_watermarked.jpg") for path in supabase_paths]
@@ -47,8 +57,10 @@ class PostManager:
 
             print(f"DEBUG: supabse_paths: {supabase_paths}")
             print(f"DEBUG: file_paths: {file_paths}")
+            print(f"DEBUG: full_supabase_paths: {full_supabase_paths}")
             if "instagram" in platforms:
-                tasks.append(InstagramService.upload_photos(user_id, supabase_paths, caption))
+                print(f"paths to upload: {paths_to_upload}")
+                tasks.append(InstagramService.upload_photos(user_id, paths_to_upload, caption))
 
             if "facebook" in platforms:
                 tasks.append(FacebookService.upload_photos(user_id, full_supabase_paths, caption))
@@ -86,9 +98,24 @@ class PostManager:
                 if os.path.exists(path):
                     os.remove(path)
                     print(f"DEBUG: Removed local file {path}")
+            for path in clean_cropped_paths: # removes the watermarked supabase files
+                if os.path.exists(path):
+                    os.remove(path)
+                    print(f"DEBUG: Removed local file {path}")
+            for path in watermarked_cropped_paths: # removes the watermarked supabase files
+                if os.path.exists(path):
+                    os.remove(path)
+                    print(f"DEBUG: Removed local file {path}")
             try:
-                #supabase.storage.from_("photos").remove(supabase_paths)
+                supabase.storage.from_("photos").remove(supabase_paths)
                 supabase.storage.from_("photos").remove(original_supabase_paths)
+                cropped_base_paths = []
+                for path in clean_cropped_paths:
+                    cropped_base_paths.append(os.path.basename(path)) 
+                for path in watermarked_cropped_paths:
+                    cropped_base_paths.append(os.path.basename(path))
+                supabase.storage.from_("photos").remove(cropped_base_paths)
+                print(f"DEBUG: Removed {cropped_base_paths} from Supabase Storage")
                 print(f"DEBUG: Removed {supabase_paths} from Supabase Storage")
                 print(f"DEBUG: Removed {original_supabase_paths} from Supabase Storage")
             except Exception as e:

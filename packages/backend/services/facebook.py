@@ -161,11 +161,12 @@ class FacebookService:
                 raise Exception(f"FB Publish Failed: {publish_res}")
 
             post_id = publish_res["id"]
-            print(f"[FB Photo] Success! Post ID: {post_id}")
+            actual_post_id = post_id.split('_')[-1]
+            print(f"[FB Photo] Success! Post ID: {actual_post_id}")
             
             return {
                 "platform": "facebook", 
-                "url": f"https://www.facebook.com/{post_id}"
+                "url": f"https://www.facebook.com/{page_id}/posts/{actual_post_id}"
             }
 
         except Exception as e:
