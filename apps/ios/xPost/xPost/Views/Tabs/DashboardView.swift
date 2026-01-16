@@ -575,6 +575,7 @@ struct HistoryRow: View {
     @State private var checkmarkScale: CGFloat = 0.5
     @State private var checkmarkOpacity: Double = 0
     @State private var showPlatformPicker = false
+    @State private var loadingRotation: Double = 0
     
     // Helper to determine if the post was today
     private var isToday: Bool {
@@ -588,11 +589,27 @@ struct HistoryRow: View {
                     .fill(post.status == "published" ? Color.brandPurple.opacity(0.1) : Color.brandPurple.opacity(0.1))
                     .frame(width: 44, height: 44)
                 
-                Image(systemName: post.status == "published" ? "checkmark" : "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(post.status == "published" ? .brandPurple : .red)
-                    .scaleEffect(checkmarkScale)
-                    .opacity(checkmarkOpacity)
+                if post.status == "published" {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.brandPurple)
+                        .scaleEffect(checkmarkScale)
+                        .opacity(checkmarkOpacity)
+                } else if post.status == "uploading" {
+                    BrandedSpinner()
+                } else {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.roseRed)
+                        .scaleEffect(checkmarkScale)
+                        .opacity(checkmarkOpacity)
+                }
+                
+//                Image(systemName: post.status == "published" ? "checkmark" : "xmark")
+//                    .font(.system(size: 14, weight: .bold))
+//                    .foregroundColor(post.status == "published" ? .brandPurple : .red)
+//                    .scaleEffect(checkmarkScale)
+//                    .opacity(checkmarkOpacity)
             }
             
             VStack(alignment: .leading, spacing: 4) {
@@ -818,3 +835,26 @@ struct PendingPostCard2: View {
     }
 }
 
+
+struct BrandedSpinner: View {
+    @State private var isAnimating = false
+    
+    var body: some View {
+        Circle()
+            .trim(from: 0, to: 0.3)
+            .stroke(
+                AngularGradient(
+                    colors: [.brandPurple, .brandPurple.opacity(0)],
+                    center: .center
+                ),
+                style: StrokeStyle(lineWidth: 3, lineCap: .round)
+            )
+            .frame(width: 24, height: 24)
+            .rotationEffect(.degrees(isAnimating ? 360 : 0))
+            .onAppear {
+                withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
+                    isAnimating = true
+                }
+            }
+    }
+}
