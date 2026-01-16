@@ -48,6 +48,7 @@ struct AccountView: View {
     @State private var showCards = false
     @State private var showSideMenu = false
     @State private var sideMenuOffset: CGFloat = 0
+    @State private var iconScale: CGFloat = 0.6 // Start small
     
     
     private func openLink(_ urlString: String) {
@@ -104,10 +105,12 @@ struct AccountView: View {
                     .fill(Color.brandPurple.opacity(0.15))
                     .frame(width: 100, height: 100)
                     .blur(radius: 20)
+                    .scaleEffect(iconScale)
                  
                 Image(systemName: "person.crop.circle.fill")
                     .font(.system(size: 80))
                     .foregroundStyle(Color.brandPurple.gradient)
+                    .scaleEffect(iconScale)
             }
             .padding(.top, 20)
             
@@ -121,6 +124,13 @@ struct AccountView: View {
         }
         .opacity(isAnimating ? 1 : 0)
         .offset(y: isAnimating ? 0 : 15)
+        .onAppear{
+            iconScale = 0.6
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.5, blendDuration: 0)) {
+                        iconScale = 1.0
+                        isAnimating = true
+                    }
+        }
     }
     
     private var subscriptionCarousel: some View {
