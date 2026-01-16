@@ -18,6 +18,13 @@ func platformIcon(for name: String) -> String {
 struct MainDashboardView: View {
     @State private var posts: [PostModel] = []
     @State private var animationPhase: Int = 0
+    
+    @State private var refreshTimer: Timer? = nil
+
+    // Helper to check if any post is currently uploading
+    private var hasActiveUploads: Bool {
+        posts.contains { $0.status == "uploading" }
+    }
 
     // MARK: - Computed Lists (List-safe)
     var pendingPosts: [PostModel] {
@@ -26,6 +33,29 @@ struct MainDashboardView: View {
 
     var historyPosts: [PostModel] {
         posts.filter { $0.status != "pending" }
+    }
+    
+    
+    func startPolling() {
+        // Don't start a second timer if one is already running
+        guard refreshTimer == nil else { return }
+        
+        // Poll every 4 seconds
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
+            Task { @MainActor in
+                await loadData()
+                
+                // If everything is finished, stop the timer to save battery
+                if !posts.contains(where: { $0.status == "uploading" }) {
+                    stopPolling()
+                }
+            }
+        }
+    }
+
+    func stopPolling() {
+        refreshTimer?.invalidate()
+        refreshTimer = nil
     }
 
     // MARK: - Delete
@@ -138,6 +168,18 @@ struct MainDashboardView: View {
             .task {
                 await loadData()
                 startLandingSequence()
+                if hasActiveUploads {
+                    startPolling()
+                }
+            }
+            // Watch for changes in the posts array
+            .onChange(of: posts) { oldValue, newValue in
+                if newValue.contains(where: { $0.status == "uploading" }) {
+                    startPolling()
+                }
+            }
+            .onDisappear {
+                stopPolling() // Always clean up when navigating away
             }
             .refreshable { await loadData() }
         }
