@@ -54,14 +54,27 @@ struct LoginView: View {
                             customField(title: "Email", text: $email, icon: "envelope.fill", isSecure: false)
                             customField(title: "Password", text: $password, icon: "lock.fill", isSecure: true)
                             
-                            // Forgot Password Link
-                            NavigationLink(destination: ForgotPasswordView()) {
-                                Text("Forgot Password?")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundColor(.brandPurple)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
-                                    .padding(.trailing, 8)
+                            
+                            // Updated Forgot Password Link
+                            HStack {
+                                Spacer() // Pushes the link to the right
+                                NavigationLink(destination: ForgotPasswordView()) {
+                                    Text("Forgot Password?")
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundColor(.brandPurple)
+                                        .padding(.trailing, 8)
+                                        .contentShape(Rectangle()) // Ensures only the text area is the hit target
+                                }
                             }
+                            
+                            // Forgot Password Link
+//                            NavigationLink(destination: ForgotPasswordView()) {
+//                                Text("Forgot Password?")
+//                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+//                                    .foregroundColor(.brandPurple)
+//                                    .frame(maxWidth: .infinity, alignment: .trailing)
+//                                    .padding(.trailing, 8)
+//                            }
                         }
                         .padding(.horizontal)
                         .offset(y: animationPhase >= 2 ? 0 : 20)
