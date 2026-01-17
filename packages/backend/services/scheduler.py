@@ -28,6 +28,8 @@ async def check_and_publish():
         return
 
     for post in posts_to_publish:
+        if not post.get("video_path"):
+            continue  # Skip if no video_path
         post_id = post['id']
         platforms = post['platforms'] 
         
