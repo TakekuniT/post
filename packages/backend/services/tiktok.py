@@ -227,7 +227,7 @@ class TikTokService:
             body = {
                 "post_info": {
                     "title": caption[:50],
-                    "privacy_level": "SELF_ONLY"
+                    "privacy_level": "PUBLIC_TO_EVERYONE" # "SELF_ONLY" for development, "PUBLIC_TO_EVERYONE" for production
                 },
                 "source_info": {
                     "source": "FILE_UPLOAD",
